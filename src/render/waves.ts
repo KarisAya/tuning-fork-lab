@@ -1,12 +1,185 @@
 // 波的绘制：直接波用软边可见度，二级波用几何路径采样。
-
-import { DIFF_MIN_ALPHA, MIN_DRAW_ALPHA, RENDER_SAMPLES, SECONDARY_RENDER_SAMPLES, TAU, WAVE_LW, WAVE_REMOVE_ALPHA } from '../core/constants';
+import {
+  DIFF_MIN_ALPHA,
+  MIN_DRAW_ALPHA,
+  RENDER_SAMPLES,
+  SECONDARY_RENDER_SAMPLES,
+  TAU,
+  WAVE_LW,
+  WAVE_REMOVE_ALPHA,
+} from '../core/constants';
 import type { Point, Wave, WaveObstacle } from '../core/types';
 import { getOccluder } from '../sim/occluders';
-import { diffractionEnvelope, directVisibility, reflectionVisibility, segmentBlockedByBoards } from '../sim/optics';
+import {
+  diffractionEnvelope,
+  buildOccluderCache,
+  directVisibility,
+  getWavePathToPoint,
+  segmentBlockedByBoards,
+} from '../sim/optics';
 import { renderWaveAlpha } from '../sim/waves';
 import { state } from '../state';
 import { waveCtx } from '../ui/dom';
+
+// ---------------------------------------------------------------------------
+// 常量 / 缓存
+// ---------------------------------------------------------------------------
+
+const ALPHA_STEP = 0.04;
+const ALPHA_INV = 1 / ALPHA_STEP;
+/** 目标弧段长度（像素），决定采样密度。 */
+const MIN_SEG_PX = 3;
+/** 每个波最少采样数，避免小半径出现明显折线。 */
+const MIN_SAMPLES = 64;
+
+// sin/cos 查表（固定分辨率，支持负角度回绕）
+const TRIG_BITS = 12;
+const TRIG_SIZE = 1 << TRIG_BITS;
+const TRIG_MASK = TRIG_SIZE - 1;
+const TRIG_SCALE = TRIG_SIZE / TAU;
+const SIN_TABLE = new Float32Array(TRIG_SIZE);
+const COS_TABLE = new Float32Array(TRIG_SIZE);
+for (let i = 0; i < TRIG_SIZE; i += 1) {
+  const a = (i / TRIG_SIZE) * TAU;
+  SIN_TABLE[i] = Math.sin(a);
+  COS_TABLE[i] = Math.cos(a);
+}
+
+function fastSin(angle: number): number {
+  return SIN_TABLE[((angle * TRIG_SCALE) | 0) & TRIG_MASK];
+}
+function fastCos(angle: number): number {
+  return COS_TABLE[((angle * TRIG_SCALE) | 0) & TRIG_MASK];
+}
+
+// 颜色字符串缓存：key = hue|sat|light|quantizedAlpha
+const colorCache = new Map<string, string>();
+function getStrokeColor(
+  hue: string,
+  sat: number,
+  light: number,
+  alpha: number,
+): string {
+  const key = `${hue}|${sat}|${light}|${alpha}`;
+  let c = colorCache.get(key);
+  if (c === undefined) {
+    c = `hsla(${hue},${sat}%,${light}%,${alpha.toFixed(3)})`;
+    colorCache.set(key, c);
+  }
+  return c;
+}
+
+// 复用衍射波的忽略集合，避免每帧 new Set
+const tmpIgnore = new Set<WaveObstacle>();
+
+interface ArcRun {
+  a0: number;
+  a1: number;
+  alpha: number;
+}
+
+// ---------------------------------------------------------------------------
+// 工具
+// ---------------------------------------------------------------------------
+
+/**
+ * 判断圆环（半径 r 的圆周）是否与视口矩形相交。
+ *
+ * - 若整个圆盘都在视口外 → 不画。
+ * - 若整个矩形都落在圆盘内部 → 圆周也在视口外 → 不画。
+ * - 其余情况保留。
+ */
+function circleRingIntersectsViewport(
+  cx: number,
+  cy: number,
+  r: number,
+  w: number,
+  h: number,
+): boolean {
+  // 圆心到视口矩形的最近点距离平方
+  const nx = cx < 0 ? 0 : cx > w ? w : cx;
+  const ny = cy < 0 ? 0 : cy > h ? h : cy;
+  const dx = cx - nx;
+  const dy = cy - ny;
+  const dmin2 = dx * dx + dy * dy;
+
+  // 圆心到四个角点的最大距离平方
+  let dmax2 = 0;
+  for (let i = 0; i < 4; i += 1) {
+    const x = (i & 1) === 0 ? 0 : w;
+    const y = (i & 2) === 0 ? 0 : h;
+    const ex = cx - x;
+    const ey = cy - y;
+    const d2 = ex * ex + ey * ey;
+    if (d2 > dmax2) dmax2 = d2;
+  }
+
+  const r2 = r * r;
+  return r2 >= dmin2 && r2 <= dmax2;
+}
+
+/**
+ * 采样数按弧长自适应。
+ * 小半径不再强制 256 次采样，大半径也不会低于视觉可分辨密度。
+ */
+function sampleCountForRadius(r: number, maxSamples: number): number {
+  const arcLen = TAU * r;
+  const byArc = Math.ceil(arcLen / MIN_SEG_PX);
+  if (byArc < MIN_SAMPLES) return MIN_SAMPLES;
+  if (byArc > maxSamples) return maxSamples;
+  return byArc;
+}
+
+/**
+ * 把连续同 alpha 的弧段合并后按颜色分组，一次 stroke 画完。
+ *
+ * 相比「每段 beginPath + arc + stroke」，可以把 Canvas 调用次数
+ * 从 O(samples) 降到 O(不同颜色数)。因为 alpha 已经被量化到
+ * ALPHA_STEP，通常只会产生很少几个颜色分组。
+ */
+function strokeArcRuns(
+  cx: number,
+  cy: number,
+  r: number,
+  runs: ArcRun[],
+  hue: string,
+  sat: number,
+  light: number,
+): void {
+  if (runs.length === 0) return;
+
+  const buckets = new Map<number, ArcRun[]>();
+  for (let i = 0; i < runs.length; i += 1) {
+    const run = runs[i];
+    const key = Math.round(run.alpha * ALPHA_INV);
+    let arr = buckets.get(key);
+    if (arr === undefined) {
+      arr = [];
+      buckets.set(key, arr);
+    }
+    arr.push(run);
+  }
+
+  for (const [key, arcs] of buckets) {
+    const alpha = key * ALPHA_STEP;
+    if (alpha < MIN_DRAW_ALPHA) continue;
+    waveCtx.strokeStyle = getStrokeColor(hue, sat, light, alpha);
+    waveCtx.beginPath();
+    for (let i = 0; i < arcs.length; i += 1) {
+      const arc = arcs[i];
+      const c = fastCos(arc.a0);
+      const s = fastSin(arc.a0);
+      // 先 moveTo 到弧起点，避免 arc 从当前点拉一条直线过去
+      waveCtx.moveTo(cx + c * r, cy + s * r);
+      waveCtx.arc(cx, cy, r, arc.a0, arc.a1);
+    }
+    waveCtx.stroke();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 直接波
+// ---------------------------------------------------------------------------
 
 /**
  * 为了避免 Canvas 在每一个角度创建大量随机 alpha 状态，
@@ -18,101 +191,211 @@ import { waveCtx } from '../ui/dom';
  */
 function drawDirectWave(wave: Wave, baseAlpha: number): void {
   if (wave.r <= 0.5) return;
-  const samples = Math.min(RENDER_SAMPLES, Math.max(256, Math.ceil(wave.r / 2)));
+
+  const samples = sampleCountForRadius(wave.r, RENDER_SAMPLES);
   const hue = wave.hue.toFixed(1);
-  const ALPHA_STEP = 0.04;
+  const stepAngle = TAU / samples;
+
+  const cache = buildOccluderCache(wave);
+  const runs: ArcRun[] = [];
   let runStart = -1;
   let runAlpha = 0;
-  const flush = (endIndex: number): void => {
+
+  const flush = (endAngle: number): void => {
     if (runStart < 0 || runAlpha < MIN_DRAW_ALPHA) {
       runStart = -1;
       runAlpha = 0;
       return;
     }
-    const a0 = runStart / samples * TAU;
-    const a1 = endIndex / samples * TAU;
-    waveCtx.strokeStyle = `hsla(${hue},90%,66%,${runAlpha.toFixed(3)})`;
-    waveCtx.beginPath();
-    waveCtx.arc(wave.x, wave.y, wave.r, a0, a1);
-    waveCtx.stroke();
+    runs.push({ a0: runStart, a1: endAngle, alpha: runAlpha });
     runStart = -1;
     runAlpha = 0;
   };
-  for (let i = 0; i <= samples; i += 1) {
-    if (i === samples) {
-      flush(i);
-      continue;
-    }
-    const angle = (i + 0.5) / samples * TAU;
-    const ux = Math.cos(angle);
-    const uy = Math.sin(angle);
-    const visibility = directVisibility(wave, ux, uy);
-    const alpha = baseAlpha * (0.035 + 0.965 * visibility);
-    if (alpha < MIN_DRAW_ALPHA) {
-      flush(i);
-      continue;
-    }
-    const quantizedAlpha = Math.round(alpha / ALPHA_STEP) * ALPHA_STEP;
+
+  for (let i = 0; i < samples; i += 1) {
+    const angle = (i + 0.5) * stepAngle;
+    const ux = fastCos(angle);
+    const uy = fastSin(angle);
+    const alpha = baseAlpha * directVisibility(wave, ux, uy, angle, cache);
+    if (alpha < MIN_DRAW_ALPHA) { flush(i * stepAngle); continue; }
+
+    const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
     if (runStart < 0) {
-      runStart = i;
+      runStart = i * stepAngle;
       runAlpha = quantizedAlpha;
       continue;
     }
-    // 只合并透明度接近的弧段。某个方向被隔音板遮挡时，不会把整个连续弧段压成同一个低透明度。
+
+    // 只合并透明度接近的弧段。某个方向被隔音板遮挡时，
+    // 不会把整个连续弧段压成同一个低透明度。
     if (Math.abs(quantizedAlpha - runAlpha) > ALPHA_STEP) {
-      flush(i);
-      runStart = i;
+      flush(i * stepAngle);
+      runStart = i * stepAngle;
       runAlpha = quantizedAlpha;
     }
   }
+  flush(TAU);
+  strokeArcRuns(wave.x, wave.y, wave.r, runs, hue, 90, 66);
 }
 
+// ---------------------------------------------------------------------------
+// 反射波
+// ---------------------------------------------------------------------------
+
 /**
- * 反射波仍使用几何路径判断，但把采样提高并用短弧段绘制。
- * 关键是：反射波不再依赖一个可能在某帧全部变空的 run。
+ * 反射波仍使用几何路径判断，但把采样按弧长自适应，
+ * 并在连续同 alpha 区间内合批绘制。
+ *
+ * 关键是：反射波不再依赖一个可能在某帧全部变空的 run，
+ * 同时把每个小弧段一次 stroke 的开销降下来。
  */
+// function drawReflectedWave(wave: Wave, baseAlpha: number): void {
+//   if (wave.r <= 0.5) return;
+
+//   const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
+//   const stepAngle = TAU / steps;
+//   const hue = wave.hue.toFixed(1);
+
+//   const runs: ArcRun[] = [];
+//   let runStart = -1;
+//   let runEnd = 0;
+//   let runAlpha = 0;
+
+//   const flush = (): void => {
+//     if (runStart < 0) return;
+//     runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
+//     runStart = -1;
+//   };
+
+//   for (let i = 0; i < steps; i += 1) {
+//     const a0 = i * stepAngle;
+//     const a1 = a0 + stepAngle;
+//     const am = (a0 + a1) * 0.5;
+
+//     const target: Point = [wave.x + fastCos(am) * wave.r, wave.y + fastSin(am) * wave.r];
+//     if (getWavePathToPoint(wave, target) === null) {
+//       const near0: Point = [wave.x + fastCos(am - stepAngle) * wave.r, wave.y + fastSin(am - stepAngle) * wave.r];
+//       if (getWavePathToPoint(wave, near0) === null) {
+//         const near1: Point = [wave.x + fastCos(am + stepAngle) * wave.r, wave.y + fastSin(am + stepAngle) * wave.r];
+//         if (getWavePathToPoint(wave, near1) === null) {
+//           flush();
+//           continue;
+//         }
+//       }
+//     }
+//     const quantizedAlpha = Math.round(baseAlpha * ALPHA_INV) * ALPHA_STEP;
+//     if (runStart < 0) {
+//       runStart = a0;
+//       runEnd = a1;
+//       runAlpha = quantizedAlpha;
+//     } else if (Math.abs(quantizedAlpha - runAlpha) <= ALPHA_STEP) {
+//       runEnd = a1;
+//     } else {
+//       flush();
+//       runStart = a0;
+//       runEnd = a1;
+//       runAlpha = quantizedAlpha;
+//     }
+//   }
+//   flush();
+//   strokeArcRuns(wave.x, wave.y, wave.r, runs, hue, 90, 66);
+// }
+
 function drawReflectedWave(wave: Wave, baseAlpha: number): void {
   if (wave.r <= 0.5) return;
-  const steps = SECONDARY_RENDER_SAMPLES;
+
+  const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
+  const stepAngle = TAU / steps;
   const hue = wave.hue.toFixed(1);
+
+  const runs: ArcRun[] = [];
+  let runStart = -1;
+  let runEnd = 0;
+  let runAlpha = 0;
+
+  const flush = (): void => {
+    if (runStart < 0) return;
+    runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
+    runStart = -1;
+  };
+
+  // 上一次迭代在 am 处的 getWavePathToPoint 结果。
+  // 它就是本次迭代 near0 点的结果（同角度、同半径、同波源）。
+  let prevMidInvalid = true;
+  let getPrevMidInvalid;
+  const getPrevMidInvalidFirst = (i: number) => {
+    getPrevMidInvalid = () => prevMidInvalid // 减少循环中的判断次数
+    if (i === 0) {
+      const an = - stepAngle / 2;
+      return getWavePathToPoint(wave, [wave.x + fastCos(an) * wave.r, wave.y + fastSin(an) * wave.r]) === null;
+    } else {
+      return prevMidInvalid
+    }
+  };
+  getPrevMidInvalid = getPrevMidInvalidFirst
+  let midInvalid = null;
   for (let i = 0; i < steps; i += 1) {
-    const a0 = i / steps * TAU;
-    const a1 = (i + 1) / steps * TAU;
+    const a0 = i * stepAngle;
+    const a1 = a0 + stepAngle;
     const am = (a0 + a1) * 0.5;
-    const target: Point = [
-      wave.x + Math.cos(am) * wave.r,
-      wave.y + Math.sin(am) * wave.r,
-    ];
-    let visible = reflectionVisibility(wave, target);
-    if (visible === 0) {
-      const near0: Point = [
-        wave.x + Math.cos(am - TAU / steps) * wave.r,
-        wave.y + Math.sin(am - TAU / steps) * wave.r,
-      ];
-      const near1: Point = [
-        wave.x + Math.cos(am + TAU / steps) * wave.r,
-        wave.y + Math.sin(am + TAU / steps) * wave.r,
-      ];
-      if (reflectionVisibility(wave, near0) || reflectionVisibility(wave, near1)) {
-        visible = 0.35;
+    const target: Point = [wave.x + fastCos(am) * wave.r, wave.y + fastSin(am) * wave.r];
+    const cMidInvalid = midInvalid === null ? getWavePathToPoint(wave, target) === null : midInvalid;
+    midInvalid = null;
+    if (cMidInvalid) {
+      if (i === 0) {
+        const an = - stepAngle / 2;
+        prevMidInvalid = getWavePathToPoint(wave, [wave.x + fastCos(an) * wave.r, wave.y + fastSin(an) * wave.r]) === null;
+      }
+      if (prevMidInvalid) {
+        const an = am + stepAngle;
+        const p: Point = [wave.x + fastCos(an) * wave.r, wave.y + fastSin(an) * wave.r];
+        midInvalid = getWavePathToPoint(wave, p) === null;
+        if (midInvalid) {
+          // prevMidInvalid = cMidInvalid;
+          // 这里不进行赋值 因为这里确认 prevMidInvalid == cMidInvalid == true 
+          flush();
+          continue;
+        }
       }
     }
-    if (visible <= 0) continue;
-    waveCtx.strokeStyle = `hsla(${hue},92%,70%,${(baseAlpha * visible).toFixed(3)})`;
-    waveCtx.beginPath();
-    waveCtx.arc(wave.x, wave.y, wave.r, a0, a1);
-    waveCtx.stroke();
+    prevMidInvalid = cMidInvalid;
+    const quantizedAlpha = Math.round(baseAlpha * ALPHA_INV) * ALPHA_STEP;
+    if (runStart < 0) {
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    } else if (Math.abs(quantizedAlpha - runAlpha) <= ALPHA_STEP) {
+      runEnd = a1;
+    } else {
+      flush();
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    }
   }
+  flush();
+  strokeArcRuns(wave.x, wave.y, wave.r, runs, hue, 90, 66);
 }
+
+// ---------------------------------------------------------------------------
+// 衍射波
+// ---------------------------------------------------------------------------
 
 function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
   const info = wave.diffraction;
   if (!info || wave.r <= 0.5) return;
+
   const boardOcc = getOccluder(info.board);
   if (!boardOcc) return;
-  const ignore = new Set<WaveObstacle>([info.board]);
-  const steps = SECONDARY_RENDER_SAMPLES;
+
+  tmpIgnore.clear();
+  tmpIgnore.add(info.board);
+  const ignore = tmpIgnore;
+
+  const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
+  const stepAngle = TAU / steps;
   const hue = wave.hue.toFixed(1);
+
   const aX = info.edge[0];
   const aY = info.edge[1];
   const b = boardOcc.ends[1 - info.edgeIndex];
@@ -120,6 +403,7 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
   const bY = b[1];
   const eX = info.incidentSource[0];
   const eY = info.incidentSource[1];
+
   // AB 方向向量
   const vecABX = bX - aX;
   const vecABY = bY - aY;
@@ -133,59 +417,127 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
   const crossAB_AE1 = vecABX * vecAE1Y - vecABY * vecAE1X;
   const hasWedge = Math.abs(crossAB_AE1) > 1e-9;
 
+  const runs: ArcRun[] = [];
+  let runStart = -1;
+  let runEnd = 0;
+  let runAlpha = 0;
+
+  const flush = (): void => {
+    if (runStart < 0) return;
+    runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
+    runStart = -1;
+  };
+
   for (let k = 0; k < steps; k += 1) {
-    const a0 = (k / steps) * TAU;
-    const a1 = ((k + 1) / steps) * TAU;
+    const a0 = k * stepAngle;
+    const a1 = a0 + stepAngle;
     const am = (a0 + a1) * 0.5;
-    const px = aX + Math.cos(am) * wave.r;
-    const py = aY + Math.sin(am) * wave.r;
+
+    const cam = fastCos(am);
+    const sam = fastSin(am);
+    const px = aX + cam * wave.r;
+    const py = aY + sam * wave.r;
+
     // 板子自身占用的楔形区域不画，避免波「穿过」板身。
     if (hasWedge) {
       const vecAPX = px - aX;
       const vecAPY = py - aY;
       const crossAB_AP = vecABX * vecAPY - vecABY * vecAPX;
       const crossAE1_AP = vecAE1X * vecAPY - vecAE1Y * vecAPX;
-      if (crossAB_AE1 * crossAB_AP >= 0 && crossAB_AE1 * crossAE1_AP <= 0) continue;
+      if (crossAB_AE1 * crossAB_AP >= 0 && crossAB_AE1 * crossAE1_AP <= 0) {
+        flush();
+        continue;
+      }
     }
+
     const target: Point = [px, py];
-    if (segmentBlockedByBoards(info.edge, target, ignore)) continue;
+    if (segmentBlockedByBoards(info.edge, target, ignore)) {
+      flush();
+      continue;
+    }
 
-    const localGain = diffractionEnvelope(boardOcc, info.edge, info.incidentSource, target, wave.r);
-    const a = baseAlpha * localGain;
-    if (a < DIFF_MIN_ALPHA) continue;
+    const localGain = diffractionEnvelope(
+      boardOcc,
+      info.edge,
+      info.incidentSource,
+      target,
+      wave.r,
+    );
+    const alpha = baseAlpha * localGain;
+    // const alpha = baseAlpha;
+    if (alpha < DIFF_MIN_ALPHA) {
+      flush();
+      continue;
+    }
 
-    waveCtx.strokeStyle = `hsla(${hue},92%,74%,${a.toFixed(3)})`;
-    waveCtx.beginPath();
-    waveCtx.arc(aX, aY, wave.r, a0, a1);
-    waveCtx.stroke();
+    const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
+    if (runStart < 0) {
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    } else if (Math.abs(quantizedAlpha - runAlpha) <= ALPHA_STEP) {
+      runEnd = a1;
+    } else {
+      flush();
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    }
   }
+
+  flush();
+  strokeArcRuns(aX, aY, wave.r, runs, hue, 90, 66);
 }
+
+// ---------------------------------------------------------------------------
+// 入口
+// ---------------------------------------------------------------------------
 
 export function renderWaves(): void {
   waveCtx.clearRect(0, 0, state.deskW, state.deskH);
   waveCtx.lineWidth = WAVE_LW;
   waveCtx.lineCap = 'round';
   waveCtx.lineJoin = 'round';
-  // 第一遍绘制主波：直接波永远先建立完整的视觉连续性。
+
+  const w = state.deskW;
+  const h = state.deskH;
+
+  // 单次遍历收集三类波，避免重复调用 renderWaveAlpha 和重复分支判断。
+  const directWaves: Array<[Wave, number]> = [];
+  const reflectedWaves: Array<[Wave, number]> = [];
+  const diffractionWaves: Array<[Wave, number]> = [];
+
   for (const wave of state.waves) {
     const alpha = renderWaveAlpha(wave);
-    if (alpha < WAVE_REMOVE_ALPHA) {
-      continue;
-    }
-    if (wave.reflections.length === 0 && !wave.diffraction) {
-      drawDirectWave(wave, alpha);
+    if (alpha < WAVE_REMOVE_ALPHA) continue;
+
+    // 视口剔除：圆环完全在视口外时直接跳过。
+    if (!circleRingIntersectsViewport(wave.x, wave.y, wave.r, w, h)) continue;
+
+    if (wave.reflections.length > 0) {
+      reflectedWaves.push([wave, alpha]);
+    } else if (wave.diffraction) {
+      diffractionWaves.push([wave, alpha]);
+    } else {
+      directWaves.push([wave, alpha]);
     }
   }
-  // 第二遍绘制二级波：单独一层可以避免 drawDirectWave 的 strokeStyle 改变影响后续波。
-  for (const wave of state.waves) {
-    const alpha = renderWaveAlpha(wave);
-    if (alpha < WAVE_REMOVE_ALPHA) {
-      continue;
-    }
-    if (wave.reflections.length > 0) {
-      drawReflectedWave(wave, alpha);
-    } else if (wave.diffraction) {
-      drawDiffractionWave(wave, alpha);
-    }
+
+  // 第一遍绘制主波：直接波永远先建立完整的视觉连续性。
+  for (let i = 0; i < directWaves.length; i += 1) {
+    const [wave, alpha] = directWaves[i];
+    drawDirectWave(wave, alpha);
+  }
+
+  // 第二遍绘制二级波：单独一层可以避免 drawDirectWave 的 strokeStyle
+  // 改变影响后续波。
+
+  for (let i = 0; i < reflectedWaves.length; i += 1) {
+    const [wave, alpha] = reflectedWaves[i];
+    drawReflectedWave(wave, alpha);
+  }
+  for (let i = 0; i < diffractionWaves.length; i += 1) {
+    const [wave, alpha] = diffractionWaves[i];
+    drawDiffractionWave(wave, alpha);
   }
 }
