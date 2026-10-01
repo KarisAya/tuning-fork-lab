@@ -16,17 +16,21 @@ export function segmentBlockedByBoards(
 ): boolean {
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-6) return false;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-12) return false;
+  const len = Math.sqrt(lenSq);
   const ux = dx / len;
   const uy = dy / len;
-  for (const o of state.occluders) {
+  const tMax = len - 1e-3;
+  const sx = start[0];
+  const sy = start[1];
+  const occluders = state.occluders;
+  for (let i = 0; i < occluders.length; i += 1) {
+    const o = occluders[i];
     if (ignore.has(o.item)) continue;
-    const hit = rayHitSegment(start[0], start[1], ux, uy, ...o.seg);
+    const hit = rayHitSegment(sx, sy, ux, uy, ...o.seg);
     if (!hit) continue;
-    if (hit.t > 1e-3 && hit.t < len - 1e-3) {
-      return true;
-    }
+    if (hit.t > 1e-3 && hit.t < tMax) return true;
   }
   return false;
 }
