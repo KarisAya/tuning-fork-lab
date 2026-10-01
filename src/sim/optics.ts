@@ -1,7 +1,7 @@
 // 波的可见性 / 路径几何：直接波遮挡、反射展开路径、衍射包络。
 // 只依赖遮挡体快照，不依赖任何具体工具类。
 
-import { DIFF_DECAY, DIFF_EDGE_POWER, GRID, TAU, SHADOW_SOFTNESS } from '../core/constants';
+import { DIFF_DECAY, DIFF_EDGE_POWER, GRID, TAU, HALF_PI, SHADOW_SOFTNESS } from '../core/constants';
 import { rayHitSegment, reflectPointAcrossLine } from '../core/geometry';
 import { clamp, smoothstep } from '../core/math';
 import type { Occluder, Point, Wave, WaveObstacle } from '../core/types';
@@ -111,31 +111,56 @@ export function getWavePathToPoint(
 /**
  * 衍射包络：掠射 + 阴影填充 + 路径衰减 + 缝隙权重。
  */
-export function diffractionEnvelope(
+
+/**
+ * 衍射包络的位置项：路径衰减 × 边缘距离衰减 × 边缘权重。
+ * 同一波的一圈采样里是常量，可在循环外预计算。
+ */
+export function diffractionPositionFactor(
   o: Occluder,
-  edge: Point,
+  edgeIndex: number,
   source: Point,
-  target: Point,
   rr: number,
 ): number {
-  const incomingX = source[0] - edge[0];
-  const incomingY = source[1] - edge[1];
-  const incomingLen = Math.hypot(incomingX, incomingY) || 1;
-  const outgoingX = target[0] - edge[0];
-  const outgoingY = target[1] - edge[1];
-  const outgoingLen = Math.hypot(outgoingX, outgoingY) || 1;
-  const cosTurn = clamp(
-    (incomingX * outgoingX + incomingY * outgoingY) / (incomingLen * outgoingLen), -1, 1,
-  );
-  const turn = Math.acos(cosTurn);
-  const grazing = Math.pow(Math.max(0, Math.sin(turn)), 0.55);
-  const shadowFill = Math.pow(clamp((1 - cosTurn) * 0.5, 0, 1), DIFF_EDGE_POWER);
-  const angularGain = clamp(0.15 + 0.85 * Math.max(grazing, shadowFill), 0, 1);
+  const edge = o.ends[edgeIndex];
+  const inX = source[0] - edge[0];
+  const inY = source[1] - edge[1];
+  const inLen = Math.sqrt(inX * inX + inY * inY) || 1;
   const pathAttenuation = 1 / Math.sqrt(1 + rr / DIFF_DECAY);
-  const edgeDistanceAttenuation = 1 / Math.sqrt(1 + incomingLen / (GRID * 3.5));
-  const edgeIndex = o.ends.indexOf(edge);
-  const edgeWeight = 0.65 + 0.35 * clamp((o.gains[edgeIndex] ?? 1) - 1, 0, 1);
-  return clamp(angularGain * pathAttenuation * edgeDistanceAttenuation * edgeWeight, 0, 1);
+  const edgeDistanceAttenuation = 1 / Math.sqrt(1 + inLen / (GRID * 3.5));
+  const edgeWeight = clamp((o.gains[edgeIndex] ?? 1) - 1, 0, 1);
+  return pathAttenuation * edgeDistanceAttenuation * edgeWeight;
+}
+
+/**
+ * 衍射包络的角度项：只跟入射方向与出射方向夹角有关。
+ *
+ * inUx/inUy 是从 edge 指向 source 的【单位】向量（调用方预计算）。
+ *   turn <  π/2：反射侧，用掠射峰 sin(turn)^0.55
+ *   turn >= π/2：阴影侧，随深度单调衰减（原来 shadowFill 反向填充导致一圈无差别）
+ */
+export function diffractionAngleFactor(
+  edge: Point,
+  inUx: number,
+  inUy: number,
+  target: Point,
+): number {
+  const outX = target[0] - edge[0];
+  const outY = target[1] - edge[1];
+  const outLen = Math.sqrt(outX * outX + outY * outY) || 1;
+
+  const cosTurn = clamp((inUx * outX + inUy * outY) / outLen, -1, 1);
+
+  if (cosTurn > 0) {
+    // turn < π/2：反射侧，sin(turn) = sqrt(1 - cos²) 恒非负
+    const sinTurn = Math.sqrt(Math.max(0, 1 - cosTurn * cosTurn));
+    return Math.pow(sinTurn, 0.55);
+  }
+
+  // turn ≥ π/2：阴影侧，[π/2, π] → [0, 1] 单调
+  const turn = Math.acos(cosTurn);
+  const shadowT = (turn - HALF_PI) / HALF_PI;
+  return Math.pow(1 - shadowT, DIFF_EDGE_POWER);
 }
 
 /** 次级波（衍射）的入射方向：路径的倒数第二个点。 */
@@ -254,12 +279,4 @@ export function directVisibility(
     if (visibility <= 0.001) return 0;
   }
   return visibility;
-}
-
-export function wavePathToPoint(wave: Wave, target: Point, finalIgnore?: WaveObstacle): boolean {
-  return getWavePathToPoint(wave, target, finalIgnore) !== null;
-}
-
-export function reflectionVisibility(wave: Wave, target: Point): number {
-  return wavePathToPoint(wave, target) ? 1 : 0;
 }

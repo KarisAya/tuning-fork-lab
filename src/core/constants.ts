@@ -6,6 +6,7 @@ export const FRICTION = 1100;
 export const RESTITUTION = 0.6;
 export const MAX_DT = 1 / 30;
 export const TAU = Math.PI * 2;
+export const HALF_PI = Math.PI * 0.5;
 
 // 波形生命周期与强度
 export const WAVE_TIME = 10;
@@ -13,7 +14,7 @@ export const WAVE_LW = 1.05;
 export const X_LIMIT = GRID * 12;
 export const MIN_WAVE_EFFECTIVE_ALPHA = 0.018;
 export const WAVE_FADE_DURATION = 0.28;
-export const WAVE_REMOVE_ALPHA = 0.001;
+export const WAVE_REMOVE_ALPHA = 0.01;
 
 // 发射间隔端点（秒）：最低频 → 最高频
 export const EMIT_SLOW = 1;
@@ -35,7 +36,6 @@ export const FREQ_MAX = FREQ_TABLE[TOP_LEVEL];
 export const MAX_REFLECTION_DEPTH = 3;
 export const MAX_DIFFRACTION_DEPTH = 3;
 export const DIFF_DECAY = GRID * 5.2;
-export const DIFF_MIN_ALPHA = 0.012;
 export const DIFF_GAP_RANGE = GRID * 4;
 export const DIFF_EDGE_POWER = 0.72;
 
@@ -43,7 +43,6 @@ export const DIFF_EDGE_POWER = 0.72;
 export const RENDER_SAMPLES = 1024;
 export const SECONDARY_RENDER_SAMPLES = 384;
 export const SHADOW_SOFTNESS = GRID * 1.35;
-export const MIN_DRAW_ALPHA = 0.006;
 
 // 小车
 export const CAR_CROSS_TIME = 20;

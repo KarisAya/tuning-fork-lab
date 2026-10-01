@@ -1,7 +1,5 @@
 // 波的绘制：直接波用软边可见度，二级波用几何路径采样。
 import {
-  DIFF_MIN_ALPHA,
-  MIN_DRAW_ALPHA,
   RENDER_SAMPLES,
   SECONDARY_RENDER_SAMPLES,
   TAU,
@@ -11,7 +9,8 @@ import {
 import type { Point, Wave, WaveObstacle } from '../core/types';
 import { getOccluder } from '../sim/occluders';
 import {
-  diffractionEnvelope,
+  diffractionPositionFactor,
+  diffractionAngleFactor,
   buildOccluderCache,
   directVisibility,
   getWavePathToPoint,
@@ -162,7 +161,7 @@ function strokeArcRuns(
 
   for (const [key, arcs] of buckets) {
     const alpha = key * ALPHA_STEP;
-    if (alpha < MIN_DRAW_ALPHA) continue;
+    if (alpha < WAVE_REMOVE_ALPHA) continue;
     waveCtx.strokeStyle = getStrokeColor(hue, sat, light, alpha);
     waveCtx.beginPath();
     for (let i = 0; i < arcs.length; i += 1) {
@@ -202,7 +201,7 @@ function drawDirectWave(wave: Wave, baseAlpha: number): void {
   let runAlpha = 0;
 
   const flush = (endAngle: number): void => {
-    if (runStart < 0 || runAlpha < MIN_DRAW_ALPHA) {
+    if (runStart < 0 || runAlpha < WAVE_REMOVE_ALPHA) {
       runStart = -1;
       runAlpha = 0;
       return;
@@ -217,8 +216,7 @@ function drawDirectWave(wave: Wave, baseAlpha: number): void {
     const ux = fastCos(angle);
     const uy = fastSin(angle);
     const alpha = baseAlpha * directVisibility(wave, ux, uy, angle, cache);
-    if (alpha < MIN_DRAW_ALPHA) { flush(i * stepAngle); continue; }
-
+    if (alpha < WAVE_REMOVE_ALPHA) { flush(i * stepAngle); continue; }
     const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
     if (runStart < 0) {
       runStart = i * stepAngle;
@@ -318,21 +316,9 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
     runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
     runStart = -1;
   };
-
   // 上一次迭代在 am 处的 getWavePathToPoint 结果。
   // 它就是本次迭代 near0 点的结果（同角度、同半径、同波源）。
   let prevMidInvalid = true;
-  let getPrevMidInvalid;
-  const getPrevMidInvalidFirst = (i: number) => {
-    getPrevMidInvalid = () => prevMidInvalid // 减少循环中的判断次数
-    if (i === 0) {
-      const an = - stepAngle / 2;
-      return getWavePathToPoint(wave, [wave.x + fastCos(an) * wave.r, wave.y + fastSin(an) * wave.r]) === null;
-    } else {
-      return prevMidInvalid
-    }
-  };
-  getPrevMidInvalid = getPrevMidInvalidFirst
   let midInvalid = null;
   for (let i = 0; i < steps; i += 1) {
     const a0 = i * stepAngle;
@@ -404,18 +390,28 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
   const eX = info.incidentSource[0];
   const eY = info.incidentSource[1];
 
-  // AB 方向向量
+  // ---- 每波常量：位置项 ----
+  const positionFactor = diffractionPositionFactor(boardOcc, info.edgeIndex, info.incidentSource, wave.r);
+  // ---- 每波常量：入射方向单位向量 ----
+  const inDX = eX - aX;
+  const inDY = eY - aY;
+  const inLen = Math.sqrt(inDX * inDX + inDY * inDY) || 1;
+  const inUx = inDX / inLen;
+  const inUy = inDY / inLen;
+  // ---- 每波常量：板身楔形几何 ----
   const vecABX = bX - aX;
   const vecABY = bY - aY;
   const denom = vecABX * vecABX + vecABY * vecABY;
   const t = ((eX - aX) * vecABX + (eY - aY) * vecABY) / denom;
   const e1X = eX - 2 * t * vecABX;
   const e1Y = eY - 2 * t * vecABY;
-
   const vecAE1X = e1X - aX;
   const vecAE1Y = e1Y - aY;
   const crossAB_AE1 = vecABX * vecAE1Y - vecABY * vecAE1X;
   const hasWedge = Math.abs(crossAB_AE1) > 1e-9;
+
+  const edgePt = info.edge;
+  const radius = wave.r;
 
   const runs: ArcRun[] = [];
   let runStart = -1;
@@ -428,65 +424,47 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
     runStart = -1;
   };
 
+  // 复用同一个 Point 对象，避免每采样一次小分配
+  const p: Point = [0, 0];
+  let sumAlpha = 0;
+  let count = 0;
+
   for (let k = 0; k < steps; k += 1) {
     const a0 = k * stepAngle;
     const a1 = a0 + stepAngle;
-    const am = (a0 + a1) * 0.5;
-
+    const am = a0 + stepAngle * 0.5;
     const cam = fastCos(am);
     const sam = fastSin(am);
-    const px = aX + cam * wave.r;
-    const py = aY + sam * wave.r;
-
-    // 板子自身占用的楔形区域不画，避免波「穿过」板身。
+    // 板身楔形剔除：vecAP = (cam * radius, sam * radius)，
+    // radius > 0 只判符号，省两次乘法。
     if (hasWedge) {
-      const vecAPX = px - aX;
-      const vecAPY = py - aY;
-      const crossAB_AP = vecABX * vecAPY - vecABY * vecAPX;
-      const crossAE1_AP = vecAE1X * vecAPY - vecAE1Y * vecAPX;
+      const crossAB_AP = vecABX * sam - vecABY * cam;
+      const crossAE1_AP = vecAE1X * sam - vecAE1Y * cam;
       if (crossAB_AE1 * crossAB_AP >= 0 && crossAB_AE1 * crossAE1_AP <= 0) {
         flush();
         continue;
       }
     }
-
-    const target: Point = [px, py];
-    if (segmentBlockedByBoards(info.edge, target, ignore)) {
+    p[0] = aX + cam * radius;
+    p[1] = aY + sam * radius;
+    if (segmentBlockedByBoards(edgePt, p, ignore)) {
       flush();
       continue;
     }
-
-    const localGain = diffractionEnvelope(
-      boardOcc,
-      info.edge,
-      info.incidentSource,
-      target,
-      wave.r,
-    );
-    const alpha = baseAlpha * localGain;
-    // const alpha = baseAlpha;
-    if (alpha < DIFF_MIN_ALPHA) {
-      flush();
-      continue;
-    }
-
-    const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
-    if (runStart < 0) {
-      runStart = a0;
-      runEnd = a1;
-      runAlpha = quantizedAlpha;
-    } else if (Math.abs(quantizedAlpha - runAlpha) <= ALPHA_STEP) {
-      runEnd = a1;
-    } else {
-      flush();
-      runStart = a0;
-      runEnd = a1;
-      runAlpha = quantizedAlpha;
-    }
+    const angleFactor = diffractionAngleFactor(edgePt, inUx, inUy, p);
+    const alpha = positionFactor * angleFactor;
+    sumAlpha += alpha;
+    count += 1;
+    flush();
+    runStart = a0;
+    runEnd = a1;
+    runAlpha = alpha;
   }
-
+  if (sumAlpha < WAVE_REMOVE_ALPHA) return;
   flush();
-  strokeArcRuns(aX, aY, wave.r, runs, hue, 90, 66);
+  const scale = baseAlpha * count / sumAlpha;
+  for (let i = 0; i < runs.length; i += 1) { runs[i].alpha *= scale; }
+  strokeArcRuns(aX, aY, radius, runs, hue, 90, 66);
 }
 
 // ---------------------------------------------------------------------------
