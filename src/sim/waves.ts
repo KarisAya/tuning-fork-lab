@@ -23,7 +23,7 @@ import { getIncidentSource, getWavePathToPoint } from './optics';
 /** 2D 圆柱波近似：1/sqrt(r)。 */
 export function waveAlphaAt(radius: number): number {
   const rGrid = Math.max(1, radius / GRID);
-  return clamp(1.45 / Math.sqrt(rGrid), 0, 1);
+  return clamp(1 / Math.sqrt(rGrid), 0, 1);
 }
 
 export function effectiveWaveAlpha(wave: Wave): number {
@@ -210,15 +210,9 @@ export function updateWaves(dt: number): void {
   for (let i = state.waves.length - 1; i >= 0; i -= 1) {
     const wave = state.waves[i];
     wave.r += state.waveSpeed * dt;
-    const physicalAlpha = effectiveWaveAlpha(wave);
-    // 半径生命周期仍然是最终保险，避免任何异常情况下波无限存在。
-    if (wave.r > state.maxR) {
-      state.waves.splice(i, 1);
-      continue;
-    }
     // 一旦波弱到不值得继续做反射/衍射计算，立即停止二级波生成，
     // 但不要立即删除。保留一个短暂的淡出阶段，让动画连续。
-    if (physicalAlpha < MIN_WAVE_EFFECTIVE_ALPHA) {
+    if (wave.r > state.maxR || effectiveWaveAlpha(wave) < MIN_WAVE_EFFECTIVE_ALPHA) {
       wave.fadeOut = Math.max(0, wave.fadeOut - dt / WAVE_FADE_DURATION);
     } else {
       wave.fadeOut = 1;

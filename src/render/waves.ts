@@ -426,9 +426,6 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
 
   // 复用同一个 Point 对象，避免每采样一次小分配
   const p: Point = [0, 0];
-  let sumAlpha = 0;
-  let count = 0;
-
   for (let k = 0; k < steps; k += 1) {
     const a0 = k * stepAngle;
     const a1 = a0 + stepAngle;
@@ -452,18 +449,12 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
       continue;
     }
     const angleFactor = diffractionAngleFactor(edgePt, inUx, inUy, p);
-    const alpha = positionFactor * angleFactor;
-    sumAlpha += alpha;
-    count += 1;
     flush();
     runStart = a0;
     runEnd = a1;
-    runAlpha = alpha;
+    runAlpha = positionFactor * angleFactor;
   }
-  if (sumAlpha < WAVE_REMOVE_ALPHA) return;
   flush();
-  const scale = baseAlpha * count / sumAlpha;
-  for (let i = 0; i < runs.length; i += 1) { runs[i].alpha *= scale; }
   strokeArcRuns(aX, aY, radius, runs, hue, 90, 66);
 }
 

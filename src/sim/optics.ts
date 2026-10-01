@@ -128,8 +128,7 @@ export function diffractionPositionFactor(
   const inLen = Math.sqrt(inX * inX + inY * inY) || 1;
   const pathAttenuation = 1 / Math.sqrt(1 + rr / DIFF_DECAY);
   const edgeDistanceAttenuation = 1 / Math.sqrt(1 + inLen / (GRID * 3.5));
-  const edgeWeight = clamp((o.gains[edgeIndex] ?? 1) - 1, 0, 1);
-  return pathAttenuation * edgeDistanceAttenuation * edgeWeight;
+  return pathAttenuation * edgeDistanceAttenuation;
 }
 
 /**
