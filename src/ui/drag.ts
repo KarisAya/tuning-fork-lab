@@ -50,7 +50,7 @@ export function startDrag(event: PointerEvent, item: Tool): void {
         vx = (ev.clientX - first.x) / dt;
       }
     }
-    if (C.gravity) {
+    if (C.physics) {
       item.vx = clamp(vx * 0.9, -2400, 2400);
       item.vy = 0;
       item.grounded = false;

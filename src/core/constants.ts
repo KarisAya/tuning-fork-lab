@@ -2,7 +2,7 @@
 
 export const GRID = 24;
 export const GRAVITY = 2400;
-export const FRICTION = 1100;
+export const FRICTION = 0.5;
 export const RESTITUTION = 0.6;
 export const MAX_DT = 1 / 30;
 export const TAU = Math.PI * 2;

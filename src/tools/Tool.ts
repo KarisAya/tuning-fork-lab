@@ -10,18 +10,23 @@ import { startDrag } from '../ui/drag';
 import { createContextMenu } from '../ui/menu';
 import { openMenu } from '../ui/menu-controller';
 
+interface LandingResult {
+  landed: boolean;
+  landingY: number;
+}
 
 export class Tool {
   static shape = '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" rx="12" fill="#8fb6ff"/></svg>';
   static size: readonly [number, number] = [2, 2];
   static label = '工具';
   static icon = '▢';
-  static gravity = true;
+  static physics = true;
   static isPlatform = false;
+  static friction = FRICTION * GRAVITY;
 
   /** 新增工具时的默认纵向落点（网格）。 */
   static spawnY(maxGY: number): number {
-    return this.gravity ? 0 : Math.max(0, Math.floor(maxGY / 2));
+    return this.physics ? 0 : Math.max(0, Math.floor(maxGY / 2));
   }
 
   static onMove(_item: Tool, _dt: number): void { }
@@ -71,58 +76,31 @@ export class Tool {
     this.render();
   }
 
-  get w(): number {
-    return this.gw * GRID;
-  }
+  get w(): number { return this.gw * GRID; }
 
-  get h(): number {
-    return this.gh * GRID;
-  }
+  get h(): number { return this.gh * GRID; }
 
-  getEmissionPoint(): Point {
-    return [this.px + this.w / 2, this.py + this.h / 2];
-  }
-
-  /** 是否作为波的遮挡体：隔音板 / 回音板覆写。 */
-  get occludesWaves(): boolean {
-    return false;
-  }
+  /** 是否作为波的遮挡体 */
+  get occludesWaves(): boolean { return false; }
 
   /** 是否反射波。 */
-  get reflectsWaves(): boolean {
-    return false;
-  }
+  get reflectsWaves(): boolean { return false; }
 
   /** 作为遮挡体的几何线段；默认无。 */
-  occluderSegment(): Segment | null {
-    return null;
-  }
+  occluderSegment(): Segment | null { return null; }
 
   /** 遮挡体几何指纹，用于衍射分支去重。 */
-  occluderKey(): string {
-    return `${this.px},${this.py},${this.w},${this.h}`;
-  }
+  occluderKey(): string { return `${this.px},${this.py},${this.w},${this.h}`; }
 
-  /** 拖拽松手后是否保留自身速度（自走工具覆写）。 */
-  get hasSelfPropulsion(): boolean {
-    return false;
-  }
+  /** 拖拽松手后是否保留自身速度。 */
+  get hasSelfPropulsion(): boolean { return false; }
 
   fitElement(): void {
     this.el.style.width = `${this.w}px`;
     this.el.style.height = `${this.h}px`;
   }
 
-  keepInsideDesk(): void {
-    const maxX = Math.max(0, state.deskW - this.w);
-    const maxY = Math.max(0, state.deskH - this.h);
-    this.px = clamp(this.px, 0, maxX);
-    this.py = clamp(this.py, 0, maxY);
-    this.x = Math.round(this.px / GRID);
-    this.y = Math.round(this.py / GRID);
-  }
-
-  snapToGrid(): void {
+  protected snapToGrid(): void {
     const maxGX = Math.max(0, Math.floor((state.deskW - this.w) / GRID));
     const maxGY = Math.max(0, Math.floor((state.deskH - this.h) / GRID));
     this.x = clamp(Math.round(this.px / GRID), 0, maxGX);
@@ -130,97 +108,80 @@ export class Tool {
     this.px = this.x * GRID;
     this.py = this.y * GRID;
   }
-
-  /** 当前正下方可站立的支撑面高度。 */
-  supportY(): number {
-    const floor = state.deskH - this.h;
-    let support = floor;
+  protected findPlatformLanding(oldBottom: number, newBottom: number,): number | null {
+    if (this.vy <= 0) { return null; }
     for (const platform of state.items) {
-      if (platform === this || platform.removed || !(platform.constructor as typeof Tool).isPlatform) {
-        continue;
-      }
-      if (this.px + this.w <= platform.px + 1 || this.px >= platform.px + platform.w - 1) {
-        continue;
-      }
-      const top = platform.py - this.h;
-      if (top <= this.py + 2 && top < support) {
-        support = top;
-      }
+      if (platform.removed) { continue; }
+      if (platform === this) { continue; }
+      if (!(platform.constructor as typeof Tool).isPlatform) { continue; }
+      if (this.px + this.w <= platform.px + 1) { continue; }
+      if (this.px > platform.px + platform.w - 1) { continue; }
+      if (oldBottom > platform.py + 0.5) { continue; }
+      if (newBottom < platform.py) { continue; }
+      return platform.py;
     }
-    return support;
+    return null;
   }
 
-  stepPhysics(dt: number): void {
-    const floor = state.deskH - this.h;
-    if (!this.grounded) {
-      this.vy += GRAVITY * dt;
-      const oldBottom = this.py + this.h;
-      this.py += this.vy * dt;
-      const newBottom = this.py + this.h;
-      let landed = false;
-      if (newBottom >= state.deskH) {
-        this.py = floor;
-        landed = true;
-      } else {
-        for (const platform of state.items) {
-          if (platform === this || platform.removed || !(platform.constructor as typeof Tool).isPlatform) {
-            continue;
-          }
-          if (this.px + this.w <= platform.px + 1 || this.px >= platform.px + platform.w - 1) {
-            continue;
-          }
-          if (oldBottom <= platform.py + 0.5 && newBottom >= platform.py) {
-            this.py = platform.py - this.h;
-            landed = true;
-            break;
-          }
-        }
-      }
-      if (landed) {
-        this.vy = 0;
-        this.grounded = true;
-      }
+  protected findLanding(dt: number): LandingResult {
+    const oldBottom = this.py + this.h;
+    const newBottom = this.py + this.vy * dt + this.h;
+    // 地面
+    if (newBottom >= state.deskH) { return { landed: true, landingY: state.deskH - this.h }; }
+    // 平台
+    const platformY = this.findPlatformLanding(oldBottom, newBottom);
+    if (platformY !== null) { return { landed: true, landingY: platformY - this.h, }; }
+    return { landed: false, landingY: 0, };
+  }
+  protected applyGravity(dt: number): void {
+    this.vy += GRAVITY * dt
+    const landing = this.findLanding(dt);
+    if (landing.landed) {
+      this.py = landing.landingY;
+      this.vy = 0;
+      this.grounded = true;
     } else {
-      const support = this.supportY();
-      if (this.py < support - 1) {
-        this.grounded = false;
-        this.vy = 0;
-      } else {
-        this.py = support;
-        this.vy = 0;
-      }
+      this.py += this.vy * dt;
+      this.grounded = false;
     }
-    if (this.grounded) {
-      const dec = FRICTION * dt;
-      if (Math.abs(this.vx) <= dec) {
-        this.vx = 0;
-      } else {
-        this.vx -= Math.sign(this.vx) * dec;
-      }
+  }
+
+  protected applyFriction(dt: number): void {
+    if (!this.grounded) {
+      const C = this.constructor as typeof Tool;
+      const friction = C.friction * dt;
+      if (this.vx > friction) { this.vx -= friction; }
+      else if (this.vx < -friction) { this.vx += friction; }
+      else { this.vx = 0; }
     }
     this.px += this.vx * dt;
+  }
+  isStable(): boolean { return this.grounded && this.vx === 0 }
+
+  protected applyRebound(): void {
     if (this.px < 0) {
       this.px = 0;
-      this.vx = Math.abs(this.vx) > 30 ? -this.vx * RESTITUTION : 0;
+      this.vx = -this.vx * RESTITUTION;
     } else if (this.px + this.w > state.deskW) {
       this.px = state.deskW - this.w;
-      this.vx = Math.abs(this.vx) > 30 ? -this.vx * RESTITUTION : 0;
+      this.vx = -this.vx * RESTITUTION;
     }
-    if (this.grounded && this.vx === 0) {
-      this.snapToGrid();
-    }
+  }
+  protected stepPhysics(dt: number): void {
+    this.applyGravity(dt);
+    this.applyFriction(dt);
+    this.applyRebound();
+    if (this.isStable()) { this.snapToGrid(); }
   }
 
   update(dt: number): void {
     const C = this.constructor as typeof Tool;
-    if (!this.dragging && C.gravity) {
-      this.stepPhysics(dt);
-    }
+    if (C.physics && !this.dragging) { this.stepPhysics(dt) }
     C.onMove(this, dt);
     this.render();
   }
 
-  render(): void {
+  protected render(): void {
     this.el.style.transform = `translate(${this.px}px,${this.py}px)`;
   }
 
@@ -233,14 +194,17 @@ export class Tool {
   }
 
   deserialize(data: SerializedItem): void {
-    this.x = Math.round(typeof data.x === 'number' ? data.x : 0);
-    this.y = Math.round(typeof data.y === 'number' ? data.y : 0);
-    this.px = this.x * GRID;
-    this.py = this.y * GRID;
+    const x = Math.round(typeof data.x === 'number' ? data.x : 0);
+    const y = Math.round(typeof data.y === 'number' ? data.y : 0);
+    const maxX = Math.max(0, state.deskW - this.w);
+    const maxY = Math.max(0, state.deskH - this.h);
+    this.px = clamp(x * GRID, 0, maxX);
+    this.py = clamp(y * GRID, 0, maxY);
+    this.x = Math.round(this.px / GRID);
+    this.y = Math.round(this.py / GRID);
     this.vx = 0;
     this.vy = 0;
     this.grounded = false;
-    this.keepInsideDesk();
     this.render();
   }
 

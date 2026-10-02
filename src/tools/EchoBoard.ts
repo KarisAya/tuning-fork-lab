@@ -62,7 +62,6 @@ export class EchoBoard extends Tool {
     this.fitElement();
     this.paint();
     if (state.deskW) {
-      this.keepInsideDesk();
       this.render();
     }
   }
