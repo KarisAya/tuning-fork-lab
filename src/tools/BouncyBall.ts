@@ -14,10 +14,12 @@ import {
 
 const DEFAULT_BOUNCE_FACTOR = 0.8;
 const DEFAULT_FRICTION_FACTOR = 0.8;
-const MAX_THROW_SPEED = 2400;
+const MAX_THROW_SPEED = 6400;
 const THROW_SAMPLE_WINDOW = 120;
-const MIN_BOUNCE_SPEED = 60;
+const MIN_BOUNCE_SPEED = 30;
+const MIN_FRICTION_SPEED = 6;
 const THROW_X_THERHOLD = 0.05;
+const MIU_ACC = 0.06 * GRAVITY // 摩擦系数 * 重力加速度 = 摩擦加速度
 
 interface DragSample {
     x: number;
@@ -119,7 +121,6 @@ export class BouncyBall extends SoundEmitter {
         this.vy = vy;
     }
     private stepBallPhysics(dt: number) {
-        this.grounded = false;
         this.vy += GRAVITY * dt;
         const oldPy = this.py;
         const oldBottom = oldPy + this.h;
@@ -140,16 +141,29 @@ export class BouncyBall extends SoundEmitter {
             }
         }
         if (landed) {
-            const impactVy = this.vy;
+            if (this.grounded) {
+                // 落地不跳，变成滚动
+                const dx = MIU_ACC * dt
+                if (this.vx > 0) {
+                    if (this.vx > dx) { this.vx -= dx }
+                    else { this.vx = 0 }
+                } else {
+                    if (this.vx < -dx) { this.vx += dx }
+                    else { this.vx = 0 }
+                }
+            }
+            else {
+                const impactVy = this.vy;
+                if (impactVy > 0) {
+                    const bounceVy = -impactVy * this.bounceFactor;
+                    if (Math.abs(bounceVy) < MIN_BOUNCE_SPEED) { this.vy = 0; this.grounded = true; }
+                    else { this.vy = bounceVy; }
+                    if (this.mode === 'click') { this.emitOnce(); }
+                } else { this.vy = 0; this.grounded = true; }
+                this.vx *= this.frictionFactor;
+            }
+            if (Math.abs(this.vx) < MIN_FRICTION_SPEED) { this.vx = 0; }
             this.py = landingY;
-            this.vx *= this.frictionFactor;
-            if (impactVy > 0) {
-                const bounceVy = -impactVy * this.bounceFactor;
-                if (Math.abs(bounceVy) < MIN_BOUNCE_SPEED) { this.vy = 0; }
-                else { this.vy = bounceVy; }
-                if (this.mode === 'click') { this.emitOnce(); }
-            } else { this.vy = 0; }
-            if (Math.abs(this.vx) < MIN_BOUNCE_SPEED) { this.vx = 0; }
         } else { this.py = newPy; }
         this.px += this.vx * dt;
         if (this.px < 0) { this.px = 0; this.vx *= -RESTITUTION; }
@@ -210,7 +224,7 @@ export class BouncyBall extends SoundEmitter {
         body.appendChild(rowLabel('弹跳损耗'));
         body.appendChild(rangeControl(0, 1, 0.01, item.bounceFactor, (v) => `垂直速度 × ${v}`, (v) => { item.bounceFactor = v }));
         body.appendChild(rowLabel('摩擦损耗'));
-        body.appendChild(rangeControl(0, 1, 0.01, item.frictionFactor, (v) => `水平速度 × ${v}`, (v) => { item.frictionFactor = v; }));
+        body.appendChild(rangeControl(0, 1, 0.01, item.frictionFactor, (v) => `水平速度 × ${v}`, (v) => { item.frictionFactor = v }));
         const note = document.createElement('div');
         note.className = 'menu-note';
         note.innerHTML = `篮球可以在地上弹跳。`;
