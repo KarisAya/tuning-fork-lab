@@ -4,8 +4,6 @@ import {
   GRID,
   MIN_WAVE_EFFECTIVE_ALPHA,
   WAVE_FADE_DURATION,
-  X_LIMIT,
-  MAX_SECONDARY_DEPTH,
   WAVE_COUNT_LIMIT_THRESHOLD,
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
@@ -129,7 +127,8 @@ function createDiffractionWave(
 }
 
 function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
-  if (wave.reflections.length + wave.diffractionDepth > MAX_SECONDARY_DEPTH) return;
+  // if (wave.reflections.length > MAX_REFLECTION_DEPTH) return;
+  // if (wave.diffractionDepth > MAX_DIFFRACTION_DEPTH) return;
   // -------------------------
   // 反射
   // -------------------------
@@ -206,9 +205,8 @@ export function updateWaves(dt: number): void {
     }
     if (wave.fadeOut < 1) { if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) { state.waves.splice(i, 1); } continue; }
     if (wave.skipTag) continue;
-    if (wave.travelDistance > X_LIMIT) continue;
     const waveCount = state.waves.length
-    if (waveCount < WAVE_COUNT_LIMIT_THRESHOLD || i % Math.ceil(waveCount / WAVE_COUNT_LIMIT_THRESHOLD)) { spawnSecondaryWaves(wave); }
+    if (waveCount < WAVE_COUNT_LIMIT_THRESHOLD || !(i % Math.ceil(waveCount / WAVE_COUNT_LIMIT_THRESHOLD))) { spawnSecondaryWaves(wave); }
     else { spawnSecondaryWaves(wave, (wave) => { wave.skipTag = true, pushWave(wave) }); }
   }
   return;

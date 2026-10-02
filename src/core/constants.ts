@@ -33,7 +33,8 @@ export const FREQ_MIN = FREQ_TABLE[0];
 export const FREQ_MAX = FREQ_TABLE[TOP_LEVEL];
 
 // 反射 / 衍射
-export const MAX_SECONDARY_DEPTH = 6;
+export const MAX_REFLECTION_DEPTH = 3;
+export const MAX_DIFFRACTION_DEPTH = 3;
 export const WAVE_COUNT_LIMIT_THRESHOLD = 128;
 export const DIFF_DECAY = GRID * 5.2;
 export const DIFF_GAP_RANGE = GRID * 4;
