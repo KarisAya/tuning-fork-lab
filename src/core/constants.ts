@@ -25,29 +25,26 @@ export const RES_RANGE = GRID * 8;
 export const RES_DETUNE = 0.035;
 
 // 频率档位表：等比十档 + 两端兜底
-export const FREQ_TABLE = [
-  10, 19.95, 39.81, 79.43, 158.49, 316.23, 630.96, 1258.93, 2511.89, 5011.87, 10000,
-] as const;
+export const FREQ_TABLE = [13.75, 27.5, 55, 110, 220, 440, 880, 1760, 3520, 7040] as const;
 export const TOP_LEVEL = FREQ_TABLE.length - 1;
-export const FREQ_MIN = FREQ_TABLE[0];
-export const FREQ_MAX = FREQ_TABLE[TOP_LEVEL];
-
+export const FREQ_MIN = 10;
+export const FREQ_MAX = 10000;
+export const DEFAULT_LEVEL = 5;
+export const DEFAULT_FREQ = FREQ_TABLE[DEFAULT_LEVEL];
 // 反射 / 衍射
-export const MAX_REFLECTION_DEPTH = 3;
-export const MAX_DIFFRACTION_DEPTH = 3;
-export const WAVE_COUNT_LIMIT_THRESHOLD = 128;
+export const WAVE_COUNT_THROTTLE_START = 128;
+export const WAVE_COUNT_THROTTLE_STRICT = 512;
 export const DIFF_DECAY = GRID * 5.2;
 export const DIFF_GAP_RANGE = GRID * 4;
 export const DIFF_EDGE_POWER = 0.72;
 
 // 渲染
 export const RENDER_SAMPLES = 512;
-export const SECONDARY_RENDER_SAMPLES = 256;
+export const SECONDARY_RENDER_SAMPLES = 128;
 export const SHADOW_SOFTNESS = GRID * 1.35;
 
 // 小车
 export const CAR_CROSS_TIME = 20;
-export const CAR_DEFAULT_FREQ = 316.23;
 export const CAR_SPEED_MAX = 5;
 
 // 采样密度控件

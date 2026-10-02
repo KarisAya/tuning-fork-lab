@@ -1,6 +1,6 @@
 // 桌面配置：初始布局、导出、导入还原。
 
-import { DEFAULT_SAMPLES, GRID } from './core/constants';
+import { DEFAULT_SAMPLES, GRID, DEFAULT_FREQ } from './core/constants';
 import type { SerializedItem } from './core/types';
 import { state } from './state';
 import { addItem, removeItem } from './tools/manager';
@@ -18,7 +18,7 @@ export const INITIAL_CONFIG = {
   items: [
     { type: 'EchoBoard', x: 22, y: 4, dir: 'v', len: 12, reflect: true },
     { type: 'EchoBoard', x: 22, y: 17, dir: 'v', len: 12, reflect: true },
-    { type: 'Bell', x: 16, y: 16, freq: 158.49, mode: 'click' },
+    { type: 'Bell', x: 16, y: 16, freq: DEFAULT_FREQ, mode: 'click' },
   ],
 } as const;
 

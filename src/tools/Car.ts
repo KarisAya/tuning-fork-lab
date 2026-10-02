@@ -1,6 +1,7 @@
 // 小车：会自己横穿桌面的移动声源。
 
-import { CAR_CROSS_TIME, CAR_DEFAULT_FREQ, CAR_SPEED_MAX } from '../core/constants';
+
+import { DEFAULT_LEVEL, DEFAULT_FREQ, CAR_CROSS_TIME, CAR_SPEED_MAX } from '../core/constants';
 import { setFreq, waveInterval } from '../core/frequency';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
@@ -51,8 +52,8 @@ export class Car extends Tool {
   speed = 1;
   direction: -1 | 1 = 1;
   emitTimer = 0;
-  freq = CAR_DEFAULT_FREQ;
-  level = 5;
+  freq = DEFAULT_FREQ;
+  level = DEFAULT_LEVEL;
   wheelPhase = 0;
 
   static spawnY(maxGY: number): number {

@@ -1,6 +1,6 @@
 // 音叉：可点击 / 持续发声，与同频音叉产生共振。
 
-import { RES_DETUNE, RES_RANGE } from '../core/constants';
+import { DEFAULT_LEVEL, DEFAULT_FREQ, RES_DETUNE, RES_RANGE } from '../core/constants';
 import { setFreq, waveInterval } from '../core/frequency';
 import type { SerializedItem, WaveMode } from '../core/types';
 import { emitWave } from '../sim/waves';
@@ -40,8 +40,8 @@ export class TuningFork extends Tool {
       <path class="hit-hint" d="M7 8h58v109H7z"/>
     </svg>`;
 
-  freq = 316.23;
-  level = 5;
+  freq = DEFAULT_FREQ;
+  level = DEFAULT_LEVEL;
   mode: WaveMode = 'click';
   emitTimer = 0;
   vib = 0;

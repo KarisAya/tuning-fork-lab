@@ -4,7 +4,8 @@ import {
   GRID,
   MIN_WAVE_EFFECTIVE_ALPHA,
   WAVE_FADE_DURATION,
-  WAVE_COUNT_LIMIT_THRESHOLD,
+  WAVE_COUNT_THROTTLE_START,
+  WAVE_COUNT_THROTTLE_STRICT,
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
 import {
@@ -23,13 +24,9 @@ export function waveAlphaAt(radius: number): number {
   const rGrid = Math.max(1, radius / GRID);
   return clamp(1 / Math.sqrt(rGrid), 0, 1);
 }
-
-export function effectiveWaveAlpha(wave: Wave): number {
-  return waveAlphaAt(wave.r);
-}
-
 export function renderWaveAlpha(wave: Wave): number {
-  return effectiveWaveAlpha(wave) * wave.fadeOut;
+  const alpha = waveAlphaAt(wave.r) * wave.fadeOut;
+  return wave.skipTag ? alpha * 0.5 : alpha;
 }
 
 export function makeWave(
@@ -60,6 +57,10 @@ export function makeWave(
 }
 
 export function pushWave(wave: Wave): void {
+  state.waves.push(wave);
+}
+function pushSkipWave(wave: Wave): void {
+  wave.skipTag = true;
   state.waves.push(wave);
 }
 
@@ -198,16 +199,20 @@ export function updateWaves(dt: number): void {
     wave.r += state.waveSpeed * dt;
     // 一旦波弱到不值得继续做反射/衍射计算，立即停止二级波生成，
     // 但不要立即删除。保留一个短暂的淡出阶段，让动画连续。
-    if (wave.r > state.maxR || effectiveWaveAlpha(wave) < MIN_WAVE_EFFECTIVE_ALPHA) {
+    if (wave.r > state.maxR || waveAlphaAt(wave.r) < MIN_WAVE_EFFECTIVE_ALPHA) {
       wave.fadeOut = Math.max(0, wave.fadeOut - dt / WAVE_FADE_DURATION);
-    } else {
-      wave.fadeOut = 1;
-    }
+    } else { wave.fadeOut = 1; }
     if (wave.fadeOut < 1) { if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) { state.waves.splice(i, 1); } continue; }
     if (wave.skipTag) continue;
     const waveCount = state.waves.length
-    if (waveCount < WAVE_COUNT_LIMIT_THRESHOLD || !(i % Math.ceil(waveCount / WAVE_COUNT_LIMIT_THRESHOLD))) { spawnSecondaryWaves(wave); }
-    else { spawnSecondaryWaves(wave, (wave) => { wave.skipTag = true, pushWave(wave) }); }
+    if (waveCount > WAVE_COUNT_THROTTLE_STRICT) {
+      if (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_STRICT)) { continue; }
+      else { spawnSecondaryWaves(wave, pushSkipWave); }
+    }
+    else if (waveCount > WAVE_COUNT_THROTTLE_START &&
+      (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_START))
+    ) { spawnSecondaryWaves(wave, pushSkipWave); }
+    else { spawnSecondaryWaves(wave); }
   }
   return;
 }

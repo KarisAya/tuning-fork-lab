@@ -367,7 +367,7 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
 // 衍射波
 // ---------------------------------------------------------------------------
 
-function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
+function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   const info = wave.diffraction;
   if (!info || wave.r <= 0.5) return;
 
@@ -479,17 +479,10 @@ export function renderWaves(): void {
   for (const wave of state.waves) {
     const alpha = renderWaveAlpha(wave);
     if (alpha < WAVE_REMOVE_ALPHA) continue;
-
-    // 视口剔除：圆环完全在视口外时直接跳过。
     if (!circleRingIntersectsViewport(wave.x, wave.y, wave.r, w, h)) continue;
-
-    if (wave.reflections.length > 0) {
-      reflectedWaves.push([wave, alpha]);
-    } else if (wave.diffraction) {
-      diffractionWaves.push([wave, alpha]);
-    } else {
-      directWaves.push([wave, alpha]);
-    }
+    if (wave.reflections.length > 0) { reflectedWaves.push([wave, alpha]); }
+    else if (wave.diffraction) { diffractionWaves.push([wave, alpha]); }
+    else { directWaves.push([wave, alpha]); }
   }
 
   // 第一遍绘制主波：直接波永远先建立完整的视觉连续性。

@@ -1,5 +1,5 @@
 // 铃铛：点击 / 持续发声，不参与共振。
-
+import { DEFAULT_LEVEL, DEFAULT_FREQ } from '../core/constants';
 import { setFreq, waveInterval } from '../core/frequency';
 import type { SerializedItem, WaveMode } from '../core/types';
 import { emitWave } from '../sim/waves';
@@ -28,8 +28,8 @@ export class Bell extends Tool {
       <circle cx="12" cy="12" r="1.25" fill="#8f5d12" opacity=".8"/>
     </svg>`;
 
-  freq = 316.23;
-  level = 5;
+  freq = DEFAULT_FREQ;
+  level = DEFAULT_LEVEL;
   mode: WaveMode = 'click';
   emitTimer = 0;
   vib = 0;
