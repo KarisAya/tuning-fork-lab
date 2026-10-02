@@ -1,14 +1,12 @@
-// 音叉：可点击 / 持续发声，与同频音叉产生共振。
-
-import { DEFAULT_LEVEL, DEFAULT_FREQ, RES_DETUNE, RES_RANGE } from '../core/constants';
+// tools/TuningFork.ts
+import { RES_DETUNE, RES_RANGE } from '../core/constants';
 import { setFreq, waveInterval } from '../core/frequency';
-import type { SerializedItem, WaveMode } from '../core/types';
+import type { SerializedItem } from '../core/types';
 import { emitWave } from '../sim/waves';
 import { state } from '../state';
-import { buildForkMenu } from '../ui/menus/tone';
-import { Tool } from './Tool';
+import { SoundEmitter, buildToneMenu } from './Bell';
 
-export class TuningFork extends Tool {
+export class TuningFork extends SoundEmitter {
   static label = '音叉';
   static icon = '♬';
   static size: readonly [number, number] = [3, 5];
@@ -40,11 +38,6 @@ export class TuningFork extends Tool {
       <path class="hit-hint" d="M7 8h58v109H7z"/>
     </svg>`;
 
-  freq = DEFAULT_FREQ;
-  level = DEFAULT_LEVEL;
-  mode: WaveMode = 'click';
-  emitTimer = 0;
-  vib = 0;
   resonance = 0;
   resTimer = 0;
 
@@ -53,62 +46,50 @@ export class TuningFork extends Tool {
     this.grounded = false;
   }
 
-  static onMove(raw: Tool, dt: number): void {
-    const item = raw as TuningFork;
-    if (item.mode === 'continuous') {
-      item.vib = 1;
-      item.emitTimer -= dt;
-      if (item.emitTimer <= 0) {
-        item.emitTimer = waveInterval(item.freq);
-        emitWave(item);
-      }
-    } else {
-      item.vib = Math.max(0, item.vib - dt * 0.6);
-      item.emitTimer = 0;
-    }
-
+  static onMove(raw: TuningFork, dt: number): void {
+    super.onMove(raw, dt);
     // 邻近同频音叉共振
     let drive = 0;
-    if (item.vib < 0.95) {
+    if (raw.vib < 0.95) {
       for (const other of state.items) {
-        if (other === item || other.removed || !(other instanceof TuningFork)) {
+        if (other === raw || other.removed || !(other instanceof TuningFork)) {
           continue;
         }
         if (other.vib < 0.3) continue;
-        if (Math.abs(other.freq - item.freq) / item.freq > RES_DETUNE) {
+        if (Math.abs(other.freq - raw.freq) / raw.freq > RES_DETUNE) {
           continue;
         }
-        const dx = other.px + other.w / 2 - (item.px + item.w / 2);
-        const dy = other.py + other.h / 2 - (item.py + item.h / 2);
+        const dx = other.px + other.w / 2 - (raw.px + raw.w / 2);
+        const dy = other.py + other.h / 2 - (raw.py + raw.h / 2);
         const d = Math.hypot(dx, dy);
         if (d <= RES_RANGE) {
           drive = Math.max(drive, other.vib * (1 - d / RES_RANGE));
         }
       }
     }
-    item.resonance = Math.max(item.resonance - dt * 0.9, drive);
-    if (item.mode !== 'continuous' && item.resonance > 0.45) {
-      item.resTimer -= dt;
-      if (item.resTimer <= 0) {
-        item.resTimer = waveInterval(item.freq) * 1.8;
-        emitWave(item);
-        item.vib = Math.max(item.vib, 0.75);
+    raw.resonance = Math.max(raw.resonance - dt * 0.9, drive);
+    // 共振发波
+    if (raw.mode !== 'continuous' && raw.resonance > 0.45) {
+      raw.resTimer -= dt;
+      if (raw.resTimer <= 0) {
+        raw.resTimer = waveInterval(raw.freq) * 1.8;
+        emitWave(raw);
+        raw.vib = Math.max(raw.vib, 0.75);
       }
-    } else if (item.resonance <= 0.15) {
-      item.resTimer = 0;
+    } else if (raw.resonance <= 0.15) {
+      raw.resTimer = 0;
     }
-
-    // 声音的视觉反馈：叉臂摆动 + 发光
-    const glow = Math.max(item.vib, item.resonance);
-    const svg = item.el.firstElementChild as SVGSVGElement | null;
+    // 视觉反馈：叉臂摆动 + 发光
+    const glow = Math.max(raw.vib, raw.resonance);
+    const svg = raw.el.firstElementChild as SVGSVGElement | null;
     const tines = svg?.querySelector('.fork-tines') as SVGPathElement | null;
     if (tines) {
-      const sway = Math.sin(performance.now() * 0.05 * Math.max(1, item.freq / 100)) * glow * 1.6;
+      const sway = Math.sin(performance.now() * 0.05 * Math.max(1, raw.freq / 100)) * glow * 1.6;
       tines.setAttribute('transform', `rotate(${sway.toFixed(2)} 36 72)`);
     }
     if (svg) {
       if (glow > 0.06) {
-        const rgb = item.resonance > 0.45 ? '255,175,255' : '150,225,255';
+        const rgb = raw.resonance > 0.45 ? '255,175,255' : '150,225,255';
         svg.style.filter = `brightness(${(1 + glow * 0.42).toFixed(2)}) drop-shadow(0 0 ${(3 + glow * 9).toFixed(1)}px rgba(${rgb},${(0.35 + glow * 0.55).toFixed(2)}))`;
       } else {
         svg.style.filter = '';
@@ -116,17 +97,14 @@ export class TuningFork extends Tool {
     }
   }
 
-  static onClick(raw: Tool): void {
-    const item = raw as TuningFork;
-    if (item.mode !== 'click') {
-      return;
-    }
-    emitWave(item);
-    item.vib = 1;
+  static onClick(raw: TuningFork): void {
+    if (raw.mode !== 'click') return;
+    emitWave(raw);
+    raw.vib = 1;
   }
 
-  static onContextMenu(item: Tool): HTMLElement {
-    return buildForkMenu(item as TuningFork);
+  static onContextMenu(item: TuningFork): HTMLElement {
+    return buildToneMenu(item, '音叉');
   }
 
   serialize(): SerializedItem {

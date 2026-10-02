@@ -6,6 +6,7 @@ import {
   WAVE_FADE_DURATION,
   WAVE_COUNT_THROTTLE_START,
   WAVE_COUNT_THROTTLE_STRICT,
+  MAX_TRAVEL_DISTANCE,
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
 import {
@@ -199,10 +200,16 @@ export function updateWaves(dt: number): void {
     wave.r += state.waveSpeed * dt;
     // 一旦波弱到不值得继续做反射/衍射计算，立即停止二级波生成，
     // 但不要立即删除。保留一个短暂的淡出阶段，让动画连续。
-    if (wave.r > state.maxR || waveAlphaAt(wave.r) < MIN_WAVE_EFFECTIVE_ALPHA) {
+    if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
       wave.fadeOut = Math.max(0, wave.fadeOut - dt / WAVE_FADE_DURATION);
-    } else { wave.fadeOut = 1; }
-    if (wave.fadeOut < 1) { if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) { state.waves.splice(i, 1); } continue; }
+      if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) {
+        state.waves.splice(i, 1);
+        continue;
+      }
+    }
+    else {
+      wave.fadeOut = 1;
+    }
     if (wave.skipTag) continue;
     const waveCount = state.waves.length
     if (waveCount > WAVE_COUNT_THROTTLE_STRICT) {

@@ -10,6 +10,7 @@ import { startDrag } from '../ui/drag';
 import { createContextMenu } from '../ui/menu';
 import { openMenu } from '../ui/menu-controller';
 
+
 export class Tool {
   static shape = '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" rx="12" fill="#8fb6ff"/></svg>';
   static size: readonly [number, number] = [2, 2];
@@ -248,3 +249,5 @@ export class Tool {
     this.el.remove();
   }
 }
+
+

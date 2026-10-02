@@ -1,12 +1,15 @@
 // 事件绑定与主循环。应用的入口逻辑在 main.ts 调用 boot() 时启动。
 import { INITIAL_CONFIG, exportConfig, loadConfig, resetDesk } from './config';
-import { GRID, WAVE_TIME, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, SAMPLE_STEP } from './core/constants';
+import { GRID, WAVE_SPEED, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, DEFAULT_SAMPLES, SAMPLE_STEP } from './core/constants';
 import { state } from './state';
 import { renderWaves } from './render/waves';
 import { updateWaves } from './sim/waves';
+import { spawnTool } from './tools/manager';
+import { TOOL_REGISTRY } from './tools/registry';
 import {
   canvas,
   toolbar,
+  toolsEl,
   waveCtx,
   deskEl,
   exportBtn,
@@ -20,25 +23,17 @@ import {
 } from './ui/dom';
 import { closeMenu, isMenuOpen } from './ui/menu-controller';
 import { setSampleDensity } from './ui/sample-density';
-import { buildToolbar } from './ui/toolbar';
 
 export function layout(): void {
   // 桌面布局：视口尺寸 → 网格桌面 → 画布分辨率与波速。
-  state.deskW = Math.floor(window.innerWidth);
-  const toolbarH = toolbar.offsetHeight;
-  state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbarH) / GRID) * GRID);
   deskEl.style.width = `${state.deskW}px`;
   deskEl.style.height = `${state.deskH}px`;
   deskEl.style.backgroundSize = `${GRID}px ${GRID}px, ${GRID}px ${GRID}px`;
-  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.floor(state.deskW * state.dpr));
   canvas.height = Math.max(1, Math.floor(state.deskH * state.dpr));
   canvas.style.width = `${state.deskW}px`;
   canvas.style.height = `${state.deskH}px`;
   waveCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-  const halfDiag = Math.hypot(state.deskW / 2, state.deskH / 2);
-  state.waveSpeed = halfDiag / WAVE_TIME;
-  state.maxR = halfDiag * 1.15;
   for (const item of state.items) item.keepInsideDesk();
 }
 
@@ -47,8 +42,17 @@ export function togglePause(): void {
   pauseBtn.textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
   pauseBtn.classList.toggle('on', state.paused);
 }
-
-function bindEvents(): void {
+export function boot(): void {
+  state.deskW = Math.floor(window.innerWidth);
+  state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbar.offsetHeight) / GRID) * GRID);
+  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  state.waveSpeed = WAVE_SPEED;
+  state.samples = DEFAULT_SAMPLES;
+  state.paused = false;
+  sampleRange.min = String(SAMPLE_MIN);
+  sampleRange.max = String(SAMPLE_MAX);
+  sampleRange.step = String(SAMPLE_STEP);
+  layout();
   pauseBtn.addEventListener('click', () => {
     togglePause();
   });
@@ -76,53 +80,36 @@ function bindEvents(): void {
   });
   window.addEventListener('keydown', (event) => {
     const target = event.target as HTMLElement | null;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-      return;
-    }
-    if (event.code === 'Space') {
-      event.preventDefault();
-      togglePause();
-    }
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
+    if (event.code === 'Space') { event.preventDefault(); togglePause(); }
   });
-  document.addEventListener('pointerdown', (event) => {
-    if (isMenuOpen() && !menuEl.contains(event.target as Node)) {
-      closeMenu();
-    }
-  });
+  document.addEventListener('pointerdown', (event) => { if (isMenuOpen() && !menuEl.contains(event.target as Node)) { closeMenu(); } });
   deskEl.addEventListener('contextmenu', (event) => event.preventDefault());
-  window.addEventListener('resize', () => {
-    layout();
-    for (const item of state.items) {
-      item.render();
-    }
-  });
-}
-
-let lastTime = performance.now();
-function frame(now: number): void {
-  let dt = (now - lastTime) / 1000;
-  lastTime = now;
-  if (!(dt > 0)) {
-    dt = 0;
+  window.addEventListener('resize', () => { layout(); for (const item of state.items) { item.render(); } });
+  toolsEl.innerHTML = '';
+  for (const C of TOOL_REGISTRY) {
+    const button = document.createElement('button');
+    button.className = 'tool-btn';
+    button.type = 'button';
+    button.innerHTML = `<span class="ico">${C.icon}</span><span>${C.label}</span>`;
+    button.title = `添加${C.label}（${C.size[0]}×${C.size[1]} 网格，隔音板可调整长度）`;
+    button.addEventListener('click', () => { spawnTool(C); });
+    toolsEl.appendChild(button);
   }
-  dt = Math.min(dt, MAX_DT);
-  if (!state.paused) {
-    for (const item of state.items) { item.update(dt); }
-    updateWaves(dt);
-  }
-  renderWaves();
-  requestAnimationFrame(frame);
-}
-
-export function boot(): void {
-  sampleRange.min = String(SAMPLE_MIN);
-  sampleRange.max = String(SAMPLE_MAX);
-  sampleRange.step = String(SAMPLE_STEP);
-  bindEvents();
-  layout();
-  buildToolbar();
   loadConfig(INITIAL_CONFIG);
   sampleVal.textContent = String(state.samples);
-  lastTime = performance.now();
+  let lastTime = performance.now();
+  const frame = (now: number) => {
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if (!(dt > 0)) { dt = 0; }
+    dt = Math.min(dt, MAX_DT);
+    if (!state.paused) {
+      for (const item of state.items) { item.update(dt); }
+      updateWaves(dt);
+    }
+    renderWaves();
+    requestAnimationFrame(frame);
+  }
   requestAnimationFrame(frame);
 }

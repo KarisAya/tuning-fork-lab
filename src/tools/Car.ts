@@ -1,16 +1,16 @@
-// 小车：会自己横穿桌面的移动声源。
-
-
-import { DEFAULT_LEVEL, DEFAULT_FREQ, CAR_CROSS_TIME, CAR_SPEED_MAX } from '../core/constants';
-import { setFreq, waveInterval } from '../core/frequency';
+// tools/Car.ts
+import { CAR_SPEED_MAX } from '../core/constants';
+import { setFreq } from '../core/frequency';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
-import { emitWave } from '../sim/waves';
 import { state } from '../state';
-import { buildCarMenu } from '../ui/menus/car';
-import { Tool } from './Tool';
+import { SoundEmitter, appendToneControls } from './Bell';
+import { button, createContextMenu, menuBody, rowLabel } from '../ui/menu';
+import { placeMenu, refreshMenu } from '../ui/menu-controller';
 
-export class Car extends Tool {
+
+
+export class Car extends SoundEmitter {
   static label = '小车';
   static icon = '🚗';
   static size: readonly [number, number] = [3, 2];
@@ -48,69 +48,101 @@ export class Car extends Tool {
       <path d="M29 29h14" stroke="#8d5f11" stroke-width="1.6" stroke-linecap="round" opacity=".75"/>
     </svg>`;
 
-  running = false;
+  running: -1 | 0 | 1 = 0;
+  nextRunning: -1 | 0 | 1 = 1;
   speed = 1;
-  direction: -1 | 1 = 1;
-  emitTimer = 0;
-  freq = DEFAULT_FREQ;
-  level = DEFAULT_LEVEL;
   wheelPhase = 0;
 
-  static spawnY(maxGY: number): number {
-    return maxGY;
-  }
+  static spawnY(maxGY: number): number { return maxGY; }
 
-  get hasSelfPropulsion(): boolean {
-    return this.running;
-  }
+  get hasSelfPropulsion(): boolean { return Boolean(this.running) }
 
   update(dt: number): void {
-    if (!this.dragging && this.running && this.grounded) {
-      const support = this.supportY();
-      if (this.py < support - 1) {
-        this.grounded = false;
+    if (this.running) {
+      if (!this.dragging) {
+        if (this.grounded) {
+          const support = this.supportY();
+          if (this.py < support - 1) { this.grounded = false; }
+          else {
+            const pxPerSecond = state.waveSpeed * this.speed;
+            this.vx = this.running * pxPerSecond;
+            this.px += this.vx * dt;
+            const maxX = Math.max(0, state.deskW - this.w);
+            if (this.px <= 0 || this.px >= maxX) {
+              this.px = clamp(this.px, 0, maxX);
+              this.running = 0;
+              this.emitTimer = 0;
+              this.vx = 0;
+              this.grounded = true;
+              this.snapToGrid();
+              refreshMenu(this)
+            }
+            Car.onMove(this, dt);
+            this.render();
+            return;
+          }
+        }
       }
-    }
-    if (!this.dragging && this.running && this.grounded) {
-      const travelWidth = Math.max(1, state.deskW - this.w);
-      const pxPerSecond = (travelWidth / CAR_CROSS_TIME) * this.speed;
-      this.vx = this.direction * pxPerSecond;
-      this.px += this.vx * dt;
-      this.emitTimer -= dt;
-      if (this.emitTimer <= 0) {
-        this.emitTimer += waveInterval(this.freq);
-        emitWave(this);
-      }
-      const maxX = Math.max(0, state.deskW - this.w);
-      if (this.px <= 0 || this.px >= maxX) {
-        this.px = clamp(this.px, 0, maxX);
-        this.running = false;
-        this.emitTimer = 0;
-        this.vx = 0;
-        this.grounded = true;
-        this.snapToGrid();
-      }
-      Car.onMove(this, dt);
-      this.render();
-      return;
     }
     super.update(dt);
   }
 
-  static onMove(raw: Tool, dt: number): void {
-    const item = raw as Car;
-    if (item.running) {
-      item.wheelPhase += Math.abs(item.vx) * dt / 9.5;
+  static onMove(raw: Car, dt: number): void {
+    if (raw.running) {
+      raw.wheelPhase += Math.abs(raw.vx) * dt / 9.5;
+      raw.vib = Math.max(raw.vib, 0.9);
+      raw.tickEmission(dt, true);
+    } else {
+      super.onMove(raw, dt);
     }
-    const wheels = item.el.querySelectorAll<SVGCircleElement>('.car-wheel');
-    const angle = item.wheelPhase.toFixed(2);
-    wheels.forEach((wheel) => {
-      wheel.setAttribute('transform', `rotate(${angle} ${wheel.getAttribute('cx')} ${wheel.getAttribute('cy')})`);
-    });
   }
 
-  static onContextMenu(item: Tool): HTMLElement {
-    return buildCarMenu(item as Car);
+  static onClick(raw: Car): void {
+    if (!raw.running) { return super.onClick(raw); }
+  }
+
+  static onContextMenu(item: Car): HTMLElement {
+    const root = createContextMenu(item, '小车 · 移动声源');
+    const body = menuBody(root);
+    body.appendChild(rowLabel('运行状态'));
+    const runRow = document.createElement('div');
+    runRow.className = 'menu-row';
+    runRow.appendChild(button('← 向左', () => { item.running = -1; refreshMenu(item); }, item.running === -1
+    ));
+    runRow.appendChild(button(item.running === 0 ? '⏹ 停止' : '▶ 启动', () => {
+      if (item.running === 0) {
+        item.running = item.nextRunning;
+      } else {
+        item.nextRunning = item.running;
+        item.running = 0;
+      }
+      refreshMenu(item);
+    }, Boolean(item.running)));
+    runRow.appendChild(button('→ 向右', () => { item.running = 1; refreshMenu(item); }, item.running === 1));
+    body.appendChild(runRow);
+    const speedRow = document.createElement('div');
+    speedRow.className = 'menu-row';
+    speedRow.appendChild(button('− 0.2', () => {
+      item.speed = clamp(Math.round((item.speed - 0.2) * 10) / 10, 0.2, CAR_SPEED_MAX);
+      speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
+      placeMenu();
+    }));
+    const speedOut = document.createElement('strong');
+    speedOut.className = 'menu-value';
+    speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
+    speedRow.appendChild(speedOut);
+    speedRow.appendChild(button('+ 0.2', () => {
+      item.speed = clamp(Math.round((item.speed + 0.2) * 10) / 10, 0.2, CAR_SPEED_MAX);
+      speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
+      placeMenu();
+    }));
+    body.appendChild(speedRow);
+    appendToneControls(body, item);
+    const note = document.createElement('div');
+    note.className = 'menu-note';
+    note.textContent = `移动中持续发出 ${item.freq.toFixed(2)} Hz 声波；到边界自动停止。`;
+    body.appendChild(note);
+    return root;
   }
 
   serialize(): SerializedItem {
@@ -118,8 +150,6 @@ export class Car extends Tool {
       ...super.serialize(),
       running: this.running,
       speed: this.speed,
-      direction: this.direction,
-      freq: this.freq,
     };
   }
 
@@ -128,14 +158,17 @@ export class Car extends Tool {
     if (typeof data.speed === 'number') {
       this.speed = clamp(Math.round(data.speed * 10) / 10, 0.1, CAR_SPEED_MAX);
     }
-    if (data.direction === -1 || data.direction === 1) {
-      this.direction = data.direction;
+    if (typeof data.running === 'number') {
+      if (data.running === 0) {
+        this.running = 0;
+      } else if (data.running > 0) {
+        this.running = 1;
+      } else {
+        this.running = -1;
+      }
     }
     if (typeof data.freq === 'number') {
       setFreq(this, data.freq);
-    }
-    if (typeof data.running === 'boolean') {
-      this.running = data.running;
     }
     this.emitTimer = 0;
     this.grounded = false;

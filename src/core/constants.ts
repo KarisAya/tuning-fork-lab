@@ -9,12 +9,13 @@ export const TAU = Math.PI * 2;
 export const HALF_PI = Math.PI * 0.5;
 
 // 波形生命周期与强度
-export const WAVE_TIME = 10;
+export const WAVE_SPEED = GRID * 4;
 export const WAVE_LW = 1.05;
-export const X_LIMIT = GRID * 48;
+export const MAX_TRAVEL_DISTANCE = GRID * 32;
 export const MIN_WAVE_EFFECTIVE_ALPHA = 0.018;
-export const WAVE_FADE_DURATION = 0.28;
+export const WAVE_FADE_DURATION = 10;
 export const WAVE_REMOVE_ALPHA = 0.01;
+
 
 // 发射间隔端点（秒）：最低频 → 最高频
 export const EMIT_SLOW = 1;
@@ -44,8 +45,7 @@ export const SECONDARY_RENDER_SAMPLES = 128;
 export const SHADOW_SOFTNESS = GRID * 1.35;
 
 // 小车
-export const CAR_CROSS_TIME = 20;
-export const CAR_SPEED_MAX = 5;
+export const CAR_SPEED_MAX = 2;
 
 // 采样密度控件
 export const SAMPLE_MIN = 256;
