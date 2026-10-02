@@ -320,6 +320,7 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
   // 它就是本次迭代 near0 点的结果（同角度、同半径、同波源）。
   let prevMidInvalid = true;
   let midInvalid = null;
+  const quantizedAlpha = Math.round(baseAlpha * ALPHA_INV) * ALPHA_STEP;
   for (let i = 0; i < steps; i += 1) {
     const a0 = i * stepAngle;
     const a1 = a0 + stepAngle;
@@ -345,7 +346,6 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
       }
     }
     prevMidInvalid = cMidInvalid;
-    const quantizedAlpha = Math.round(baseAlpha * ALPHA_INV) * ALPHA_STEP;
     if (runStart < 0) {
       runStart = a0;
       runEnd = a1;
