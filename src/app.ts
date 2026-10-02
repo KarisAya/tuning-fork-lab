@@ -99,7 +99,6 @@ function bindEvents(): void {
 }
 
 let lastTime = performance.now();
-
 function frame(now: number): void {
   let dt = (now - lastTime) / 1000;
   lastTime = now;
@@ -108,9 +107,7 @@ function frame(now: number): void {
   }
   dt = Math.min(dt, MAX_DT);
   if (!state.paused) {
-    for (const item of state.items) {
-      item.update(dt);
-    }
+    for (const item of state.items) { item.update(dt); }
     updateWaves(dt);
   }
   renderWaves();

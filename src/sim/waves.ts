@@ -2,11 +2,11 @@
 
 import {
   GRID,
-  MAX_DIFFRACTION_DEPTH,
-  MAX_REFLECTION_DEPTH,
   MIN_WAVE_EFFECTIVE_ALPHA,
   WAVE_FADE_DURATION,
   X_LIMIT,
+  MAX_SECONDARY_DEPTH,
+  WAVE_COUNT_LIMIT_THRESHOLD,
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
 import {
@@ -55,13 +55,13 @@ export function makeWave(
     diffraction: null,
     diffractionDepth: 0,
     fadeOut: 1,
+    skipTag: false,
     emittedReflections: new Set(),
     emittedDiffractions: new Set(),
   };
 }
 
 export function pushWave(wave: Wave): void {
-  wave.fadeOut = 1;
   state.waves.push(wave);
 }
 
@@ -76,9 +76,6 @@ export function emitWave(item: Emitter): void {
 
 /** 由一次命中生成反射子波：镜像发射点 + 展开路径。 */
 function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | null {
-  if (parent.reflections.length >= MAX_REFLECTION_DEPTH) {
-    return null;
-  }
   if (parent.reflections.some((hop) => hop.item === o.item)) {
     return null;
   }
@@ -108,9 +105,6 @@ function createDiffractionWave(
   edgeIndex: number,
   incidentSource: Point,
 ): Wave | null {
-  if (parent.diffractionDepth >= MAX_DIFFRACTION_DEPTH) {
-    return null;
-  }
   const edge = o.ends[edgeIndex];
   const source: Point = [parent.x, parent.y];
   const sideSign = (source[0] - o.seg[0]) * o.nx + (source[1] - o.seg[1]) * o.ny;
@@ -134,47 +128,38 @@ function createDiffractionWave(
   return next;
 }
 
-function spawnSecondaryWaves(wave: Wave): void {
-  // 已经超过累计传播距离上限的波不再产生新的次生波。
-  // 初始波的 travelDistance = 0，因此仍然可以在第一次碰板时反射/衍射。
-  if (wave.travelDistance > X_LIMIT) return;
-
+function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
+  if (wave.reflections.length + wave.diffractionDepth > MAX_SECONDARY_DEPTH) return;
   // -------------------------
   // 反射
   // -------------------------
-  if (wave.reflections.length < MAX_REFLECTION_DEPTH) {
-    for (const o of state.occluders) {
-      if (wave.emittedReflections.has(o.item)) {
-        continue;
-      }
-      if (wave.diffraction?.board === o.item) {
-        continue;
-      }
-      const minDist2 = pointSegmentDistanceSquared(wave.x, wave.y, o.seg);
-      if (wave.r * wave.r < minDist2 - 1e-3) {
-        continue;
-      }
-      const hits = circleSegmentIntersections(wave.x, wave.y, wave.r, o.seg);
-      for (const hit of hits) {
-        const path = getWavePathToPoint(wave, hit, o.item);
-        if (!path) continue;
-        const bounce = path[path.length - 1];
-        const reflected = createReflectedWave(wave, o, bounce);
-        if (reflected) {
-          pushWave(reflected);
-          wave.emittedReflections.add(o.item);
-          break;
-        }
+  for (const o of state.occluders) {
+    if (wave.emittedReflections.has(o.item)) {
+      continue;
+    }
+    if (wave.diffraction?.board === o.item) {
+      continue;
+    }
+    const minDist2 = pointSegmentDistanceSquared(wave.x, wave.y, o.seg);
+    if (wave.r * wave.r < minDist2 - 1e-3) {
+      continue;
+    }
+    const hits = circleSegmentIntersections(wave.x, wave.y, wave.r, o.seg);
+    for (const hit of hits) {
+      const path = getWavePathToPoint(wave, hit, o.item);
+      if (!path) continue;
+      const bounce = path[path.length - 1];
+      const reflected = createReflectedWave(wave, o, bounce);
+      if (reflected) {
+        push(reflected);
+        wave.emittedReflections.add(o.item);
+        break;
       }
     }
   }
-
   // -------------------------
   // 衍射
   // -------------------------
-  if (wave.diffractionDepth >= MAX_DIFFRACTION_DEPTH) {
-    return;
-  }
   for (const o of state.occluders) {
     if (wave.diffraction?.board === o.item) {
       continue;
@@ -199,10 +184,12 @@ function spawnSecondaryWaves(wave: Wave): void {
       const child = createDiffractionWave(wave, o, edgeIndex, incidentSource);
       if (!child) continue;
       wave.emittedDiffractions.add(key);
-      pushWave(child);
+      push(child);
     }
   }
 }
+
+
 
 export function updateWaves(dt: number): void {
   if (!state.waves.length) return;
@@ -217,10 +204,12 @@ export function updateWaves(dt: number): void {
     } else {
       wave.fadeOut = 1;
     }
-    if (wave.fadeOut <= 0) {
-      state.waves.splice(i, 1);
-      continue;
-    }
-    spawnSecondaryWaves(wave);
+    if (wave.fadeOut < 1) { if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) { state.waves.splice(i, 1); } continue; }
+    if (wave.skipTag) continue;
+    if (wave.travelDistance > X_LIMIT) continue;
+    const waveCount = state.waves.length
+    if (waveCount < WAVE_COUNT_LIMIT_THRESHOLD || i % Math.ceil(waveCount / WAVE_COUNT_LIMIT_THRESHOLD)) { spawnSecondaryWaves(wave); }
+    else { spawnSecondaryWaves(wave, (wave) => { wave.skipTag = true, pushWave(wave) }); }
   }
+  return;
 }

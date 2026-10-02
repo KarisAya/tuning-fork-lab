@@ -11,7 +11,7 @@ export const HALF_PI = Math.PI * 0.5;
 // 波形生命周期与强度
 export const WAVE_TIME = 10;
 export const WAVE_LW = 1.05;
-export const X_LIMIT = GRID * 12;
+export const X_LIMIT = GRID * 48;
 export const MIN_WAVE_EFFECTIVE_ALPHA = 0.018;
 export const WAVE_FADE_DURATION = 0.28;
 export const WAVE_REMOVE_ALPHA = 0.01;
@@ -33,15 +33,15 @@ export const FREQ_MIN = FREQ_TABLE[0];
 export const FREQ_MAX = FREQ_TABLE[TOP_LEVEL];
 
 // 反射 / 衍射
-export const MAX_REFLECTION_DEPTH = 3;
-export const MAX_DIFFRACTION_DEPTH = 3;
+export const MAX_SECONDARY_DEPTH = 6;
+export const WAVE_COUNT_LIMIT_THRESHOLD = 128;
 export const DIFF_DECAY = GRID * 5.2;
 export const DIFF_GAP_RANGE = GRID * 4;
 export const DIFF_EDGE_POWER = 0.72;
 
 // 渲染
-export const RENDER_SAMPLES = 1024;
-export const SECONDARY_RENDER_SAMPLES = 384;
+export const RENDER_SAMPLES = 512;
+export const SECONDARY_RENDER_SAMPLES = 256;
 export const SHADOW_SOFTNESS = GRID * 1.35;
 
 // 小车
