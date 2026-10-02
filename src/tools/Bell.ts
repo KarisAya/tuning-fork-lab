@@ -191,7 +191,7 @@ export class Bell extends SoundEmitter {
   }
 
   static onContextMenu(item: Bell): HTMLElement {
-    return buildToneMenu(item, '铃铛');
+    return buildToneMenu(item, Bell.label);
   }
   deserialize(data: SerializedItem): void {
     super.deserialize(data);

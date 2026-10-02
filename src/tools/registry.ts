@@ -1,11 +1,14 @@
 // 工具注册表：工具栏顺序、按名字还原、旧配置类名的别名。
-
-import { Bell } from './Bell';
-import { Car } from './Car';
-import { EchoBoard } from './EchoBoard';
-import { SmallTable } from './SmallTable';
 import { Tool } from './Tool';
 import { TuningFork } from './TuningFork';
+import { Bell } from './Bell';
+import { EchoBoard } from './EchoBoard';
+import { SmallTable } from './SmallTable';
+import { Car } from './Car';
+import { BouncyBall } from './BouncyBall';
+
+
+
 
 export type ToolClass = typeof Tool;
 
@@ -22,6 +25,7 @@ registerTool(Bell);
 registerTool(EchoBoard);
 registerTool(SmallTable);
 registerTool(Car);
+registerTool(BouncyBall);
 
 /** 旧配置里的类名 → 当前实现。 */
 const LEGACY_NAMES: Record<string, ToolClass> = {

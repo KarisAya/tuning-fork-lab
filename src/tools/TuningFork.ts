@@ -104,7 +104,7 @@ export class TuningFork extends SoundEmitter {
   }
 
   static onContextMenu(item: TuningFork): HTMLElement {
-    return buildToneMenu(item, '音叉');
+    return buildToneMenu(item, TuningFork.label);
   }
 
   serialize(): SerializedItem {

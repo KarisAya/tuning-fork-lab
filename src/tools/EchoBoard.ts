@@ -101,7 +101,7 @@ export class EchoBoard extends Tool {
   }
 
   static onContextMenu(item: EchoBoard): HTMLElement {
-    const root = createContextMenu(item, '隔音板');
+    const root = createContextMenu(item, EchoBoard.label);
     const body = menuBody(root);
     const dirRow = rowLabel('方向');
     const dirBtns = document.createElement('div');
