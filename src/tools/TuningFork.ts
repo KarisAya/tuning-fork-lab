@@ -2,15 +2,14 @@
 import { RES_DETUNE, RES_RANGE } from '../core/constants';
 import { setFreq, waveInterval } from '../core/frequency';
 import type { SerializedItem } from '../core/types';
-import { emitWave } from '../sim/waves';
 import { state } from '../state';
-import { SoundEmitter, buildToneMenu } from './Bell';
+import { SoundEmitter } from './Bell';
 
 export class TuningFork extends SoundEmitter {
   static label = '音叉';
   static icon = '<i class="fa-solid fa-music"></i>';
   static size: readonly [number, number] = [3, 5];
-  static gravity = true;
+  static physics = true;
   static shape = `
     <svg viewBox="0 0 72 120" xmlns="http://www.w3.org/2000/svg">
       <defs>

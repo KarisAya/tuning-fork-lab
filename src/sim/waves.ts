@@ -68,12 +68,6 @@ function pushSkipWave(wave: Wave): void {
 export function emitWaveAt(x: number, y: number, freq: number): void {
   pushWave(makeWave(x, y, freq));
 }
-
-export function emitWave(item: Emitter): void {
-  const source = item.getEmissionPoint();
-  emitWaveAt(source[0], source[1], item.freq);
-}
-
 /** 由一次命中生成反射子波：镜像发射点 + 展开路径。 */
 function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | null {
   if (parent.reflections.some((hop) => hop.item === o.item)) {

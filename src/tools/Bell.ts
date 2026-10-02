@@ -1,8 +1,8 @@
 // 铃铛：点击 / 持续发声，不参与共振。
 import { DEFAULT_LEVEL, DEFAULT_FREQ, FREQ_MAX, FREQ_MIN, TOP_LEVEL } from '../core/constants';
 import { setFreq, stepLevel, waveInterval } from '../core/frequency';
-import type { Removable, TunedSource, WaveMode, SerializedItem } from '../core/types';
-import { emitWave } from '../sim/waves';
+import type { Point, WaveMode, SerializedItem } from '../core/types';
+import { emitWaveAt } from '../sim/waves';
 import { Tool } from './Tool';
 import { button, createContextMenu, menuBody, rowLabel } from '../ui/menu';
 import { refreshMenu } from '../ui/menu-controller';
@@ -10,34 +10,14 @@ import { refreshMenu } from '../ui/menu-controller';
 
 // 发声类工具共用的菜单控件。
 
-export interface ToneControls extends TunedSource, Removable {
-  mode: WaveMode;
-  emitTimer: number;
-  vib: number;
-}
-
 /** 频率、档位、发声模式；`mode` 为 false 时不出模式开关（小车用）。 */
-export function appendToneControls(
-  body: HTMLElement,
-  item: ToneControls,
-): void {
+export function appendToneControls(body: HTMLElement, item: SoundEmitter): void {
 
   body.appendChild(rowLabel('发声模式'));
   const modeRow = document.createElement('div');
   modeRow.className = 'menu-row menu-row-cells';
-  modeRow.append(
-    button('点击发声', () => {
-      item.mode = 'click';
-      item.emitTimer = 0;
-      item.vib = Math.min(item.vib, 0.2);
-      refreshMenu(item);
-    }, item.mode === 'click'),
-    button('持续发声', () => {
-      item.mode = 'continuous';
-      item.emitTimer = 0;
-      refreshMenu(item);
-    }, item.mode === 'continuous'),
-  );
+  modeRow.appendChild(button('点击发声', () => { item.mode = 'click'; item.emitTimer = 0; refreshMenu(item); }, item.mode === 'click'));
+  modeRow.appendChild(button('持续发声', () => { item.mode = 'continuous'; item.emitTimer = 0; refreshMenu(item); }, item.mode === 'continuous'));
   body.appendChild(modeRow);
   body.appendChild(rowLabel('频率（Hz）'));
   const freqRow = document.createElement('div');
@@ -77,63 +57,41 @@ export function appendToneControls(
   body.appendChild(info);
 }
 
-export function buildToneMenu(item: ToneControls, title: string): HTMLElement {
-  const root = createContextMenu(item, title);
-  appendToneControls(menuBody(root), item);
-  return root;
-}
+
 
 export abstract class SoundEmitter extends Tool {
   freq = DEFAULT_FREQ;
   level = DEFAULT_LEVEL;
   mode: WaveMode = 'click';
   emitTimer = 0;
-  vib = 0;
-
+  get emissionPoint(): Point { return [this.px + this.w / 2, this.py + this.h / 2]; }
   /** 触发一次发声（点击） */
   protected emitOnce(): void {
-    emitWave(this);
-    this.vib = 1;
+    const source = this.emissionPoint
+    emitWaveAt(source[0], source[1], this.freq);
   }
 
-  /**
-   * 每帧更新发声计时器
-   * @param dt 时间增量
-   * @param emitting 当前是否应该持续发声
-   * @returns 是否在本帧发出了新的波
-   */
-  protected tickEmission(dt: number, emitting: boolean): boolean {
-    // 振动自然衰减
-    this.vib = Math.max(0, this.vib - dt * 0.8);
-
-    if (emitting) {
-      this.emitTimer -= dt;
-      if (this.emitTimer <= 0) {
-        this.emitTimer = waveInterval(this.freq);
-        emitWave(this);
-        return true;
-      }
-    } else {
-      this.emitTimer = 0;
+  protected tickEmission(dt: number) {
+    this.emitTimer -= dt;
+    if (this.emitTimer <= 0) {
+      this.emitTimer = waveInterval(this.freq);
+      this.emitOnce()
     }
-    return false;
   }
 
-  static onClick(raw: SoundEmitter): void {
-    if (raw.mode !== 'click') return;
-    raw.emitOnce();
-  }
+  static onClick(raw: SoundEmitter): void { raw.emitOnce(); }
   static onMove(raw: SoundEmitter, dt: number): void {
-    if (raw.mode === 'continuous') {
-      // 持续模式下保持较高振动强度，并持续发波
-      raw.vib = Math.max(raw.vib, 0.9);
-      raw.tickEmission(dt, true);
-    } else {
-      // 点击模式下振动自然衰减，不持续发波
-      raw.vib = Math.max(0, raw.vib - dt * 0.8);
-      raw.emitTimer = 0;
-    }
+    if (raw.mode === 'continuous') { raw.tickEmission(dt) }
+    else { raw.emitTimer = 0; }
   }
+
+  static onContextMenu(item: SoundEmitter): HTMLElement {
+    const C = this.constructor as typeof SoundEmitter;
+    const root = createContextMenu(item, C.label);
+    appendToneControls(menuBody(root), item);
+    return root;
+  }
+
   serialize(): SerializedItem {
     return {
       ...super.serialize(),
@@ -144,12 +102,8 @@ export abstract class SoundEmitter extends Tool {
 
   deserialize(data: SerializedItem): void {
     super.deserialize(data);
-    if (typeof data.freq === 'number') {
-      setFreq(this, data.freq);
-    }
-    if (data.mode === 'continuous' || data.mode === 'click') {
-      this.mode = data.mode;
-    }
+    if (typeof data.freq === 'number') { setFreq(this, data.freq); }
+    if (data.mode === 'continuous' || data.mode === 'click') { this.mode = data.mode; }
   }
 }
 
@@ -157,7 +111,7 @@ export class Bell extends SoundEmitter {
   static label = '铃铛';
   static icon = '<i class="fa-regular fa-bell"></i>';
   static size: readonly [number, number] = [1, 1];
-  static gravity = false;
+  static physics = false;
   static shape = `
     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -179,24 +133,8 @@ export class Bell extends SoundEmitter {
     // 发光视觉反馈
     const svg = raw.el.firstElementChild as SVGSVGElement | null;
     if (!svg) return;
-    const glow = raw.vib;
-    svg.style.filter = glow > 0.05
-      ? `brightness(${(1 + glow * 0.45).toFixed(2)}) drop-shadow(0 0 ${(3 + glow * 8).toFixed(1)}px rgba(255,215,105,${(0.28 + glow * 0.58).toFixed(2)}))`
-      : '';
+    const glow = raw.emitTimer;
+    svg.style.filter = glow > 0.05 ? `brightness(${(1 + glow * 0.45).toFixed(2)}) drop-shadow(0 0 ${(3 + glow * 8).toFixed(1)}px rgba(255,215,105,${(0.28 + glow * 0.58).toFixed(2)}))` : '';
   }
-
-  static onRelease(raw: Bell): void {
-    raw.snapToGrid();
-    raw.render();
-  }
-
-  static onContextMenu(item: Bell): HTMLElement {
-    return buildToneMenu(item, Bell.label);
-  }
-  deserialize(data: SerializedItem): void {
-    super.deserialize(data);
-    // 基类已处理 freq 和 mode
-    this.snapToGrid();
-    this.render();
-  }
+  static onRelease(raw: Bell): void { raw.snapToGrid(); }
 }

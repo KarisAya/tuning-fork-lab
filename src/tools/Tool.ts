@@ -3,7 +3,7 @@
 
 import { FRICTION, GRAVITY, GRID, RESTITUTION } from '../core/constants';
 import { clamp } from '../core/math';
-import type { Point, Segment, SerializedItem } from '../core/types';
+import type { Segment, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { deskEl } from '../ui/dom';
 import { startDrag } from '../ui/drag';
@@ -181,7 +181,7 @@ export class Tool {
     this.render();
   }
 
-  protected render(): void {
+  render(): void {
     this.el.style.transform = `translate(${this.px}px,${this.py}px)`;
   }
 
