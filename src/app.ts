@@ -1,5 +1,5 @@
 // 事件绑定与主循环。应用的入口逻辑在 main.ts 调用 boot() 时启动。
-import { INITIAL_CONFIG, exportConfig, loadConfig, resetDesk } from './config';
+import { INITIAL_CONFIG, exportConfig, loadConfig, clearDesk } from './config';
 import { GRID, WAVE_SPEED, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, DEFAULT_SAMPLES, SAMPLE_STEP } from './core/constants';
 import { state } from './state';
 import { renderWaves } from './render/waves';
@@ -25,6 +25,9 @@ import { closeMenu, isMenuOpen } from './ui/menu-controller';
 import { setSampleDensity } from './ui/sample-density';
 
 export function layout(): void {
+  state.deskW = Math.floor(window.innerWidth);
+  state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbar.offsetHeight) / GRID) * GRID);
+  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
   // 桌面布局：视口尺寸 → 网格桌面 → 画布分辨率与波速。
   deskEl.style.width = `${state.deskW}px`;
   deskEl.style.height = `${state.deskH}px`;
@@ -43,9 +46,6 @@ export function togglePause(): void {
   pauseBtn.classList.toggle('on', state.paused);
 }
 export function boot(): void {
-  state.deskW = Math.floor(window.innerWidth);
-  state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbar.offsetHeight) / GRID) * GRID);
-  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
   state.waveSpeed = WAVE_SPEED;
   state.samples = DEFAULT_SAMPLES;
   state.paused = false;
@@ -56,7 +56,7 @@ export function boot(): void {
   pauseBtn.addEventListener('click', () => {
     togglePause();
   });
-  resetBtn.addEventListener('click', resetDesk);
+  resetBtn.addEventListener('click', clearDesk);
   exportBtn.addEventListener('click', exportConfig);
   importBtn.addEventListener('click', () => {
     fileIn.click();
@@ -92,7 +92,7 @@ export function boot(): void {
     button.className = 'tool-btn';
     button.type = 'button';
     button.innerHTML = `<span class="ico">${C.icon}</span><span>${C.label}</span>`;
-    button.title = `添加${C.label}（${C.size[0]}×${C.size[1]} 网格，隔音板可调整长度）`;
+    button.title = `添加${C.label}`;
     button.addEventListener('click', () => { spawnTool(C); });
     toolsEl.appendChild(button);
   }

@@ -30,11 +30,6 @@ export function clearDesk(): void {
   state.waves = [];
   closeMenu();
 }
-
-export function resetDesk(): void {
-  loadConfig(INITIAL_CONFIG);
-}
-
 export function exportConfig(): void {
   const cfg = {
     version: CONFIG_VERSION,

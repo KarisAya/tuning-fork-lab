@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0f1f" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css" />
     <title>音叉模拟器 · Wave Lab</title>
   </head>
   <body>
@@ -14,10 +15,10 @@
       <section id="toolbar" aria-label="工具栏">
         <div id="tools" class="toolbar-group"></div>
         <div class="separator" aria-hidden="true"></div>
-        <button class="control-btn" id="btn-pause" type="button">⏸ 暂停</button>
-        <button class="control-btn" id="btn-reset" type="button">↺ 重置桌面</button>
-        <button class="control-btn" id="btn-export" type="button">⬇ 导出配置</button>
-        <button class="control-btn" id="btn-import" type="button">⬆ 加载配置</button>
+        <button class="control-btn" id="btn-pause" type="button"><i class="fa-solid fa-pause"></i> 暂停</button>
+        <button class="control-btn" id="btn-reset" type="button"><i class="fa-solid fa-rotate-left"></i> 重置桌面</button>
+        <button class="control-btn" id="btn-export" type="button"><i class="fa-solid fa-file-export"></i> 导出配置</button>
+        <button class="control-btn" id="btn-import" type="button"><i class="fa-solid fa-file-import"></i> 加载配置</button>
         <input id="file-input" type="file" accept=".json,application/json" hidden />
         <div class="separator" aria-hidden="true"></div>
         <label class="sample-control">
@@ -27,8 +28,9 @@
         </label>
         <div class="toolbar-spacer"></div>
         <div class="hint">
-          空格暂停 / 继续 · 左键拖动，松手带惯性 · 右键打开工具设置<br />
-          隔音板会产生声影与镜面反射 · 端点承担边缘衍射 · 小车会携带声源匀速移动
+          空格暂停 / 继续 · 左键拖动 · 右键打开工具设置<br />
+          <a href="https://qm.qq.com/q/AnTDkyTrii" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-at"></i> KarisAya </a>
+          <span id="about"><i class="fa-solid fa-copyright"></i> 2026 IF 互动小说</span>
         </div>
       </section>
     </main>

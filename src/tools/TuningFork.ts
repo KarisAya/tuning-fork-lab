@@ -8,7 +8,7 @@ import { SoundEmitter, buildToneMenu } from './Bell';
 
 export class TuningFork extends SoundEmitter {
   static label = '音叉';
-  static icon = '♬';
+  static icon = '<i class="fa-solid fa-music"></i>';
   static size: readonly [number, number] = [3, 5];
   static gravity = true;
   static shape = `

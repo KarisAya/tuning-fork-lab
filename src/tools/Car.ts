@@ -12,7 +12,7 @@ import { placeMenu, refreshMenu } from '../ui/menu-controller';
 
 export class Car extends SoundEmitter {
   static label = '小车';
-  static icon = '🚗';
+  static icon = '<i class="fa-solid fa-car-side"></i>';
   static size: readonly [number, number] = [3, 2];
   static gravity = true;
   static shape = `
@@ -106,7 +106,7 @@ export class Car extends SoundEmitter {
     const body = menuBody(root);
     body.appendChild(rowLabel('运行状态'));
     const runRow = document.createElement('div');
-    runRow.className = 'menu-row';
+    runRow.className = 'menu-row menu-row-cells';
     runRow.appendChild(button('← 向左', () => { item.running = -1; refreshMenu(item); }, item.running === -1
     ));
     runRow.appendChild(button(item.running === 0 ? '⏹ 停止' : '▶ 启动', () => {
@@ -117,11 +117,11 @@ export class Car extends SoundEmitter {
         item.running = 0;
       }
       refreshMenu(item);
-    }, Boolean(item.running)));
+    }, !item.running));
     runRow.appendChild(button('→ 向右', () => { item.running = 1; refreshMenu(item); }, item.running === 1));
     body.appendChild(runRow);
     const speedRow = document.createElement('div');
-    speedRow.className = 'menu-row';
+    speedRow.className = 'menu-row menu-row-cells';
     speedRow.appendChild(button('− 0.2', () => {
       item.speed = clamp(Math.round((item.speed - 0.2) * 10) / 10, 0.2, CAR_SPEED_MAX);
       speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
@@ -140,7 +140,7 @@ export class Car extends SoundEmitter {
     appendToneControls(body, item);
     const note = document.createElement('div');
     note.className = 'menu-note';
-    note.textContent = `移动中持续发出 ${item.freq.toFixed(2)} Hz 声波；到边界自动停止。`;
+    note.textContent = `移动中持续发出 ${item.freq.toFixed(2)} Hz 声波。`;
     body.appendChild(note);
     return root;
   }

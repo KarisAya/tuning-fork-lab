@@ -24,7 +24,7 @@ export function appendToneControls(
 
   body.appendChild(rowLabel('发声模式'));
   const modeRow = document.createElement('div');
-  modeRow.className = 'menu-row';
+  modeRow.className = 'menu-row menu-row-cells';
   modeRow.append(
     button('点击发声', () => {
       item.mode = 'click';
@@ -155,7 +155,7 @@ export abstract class SoundEmitter extends Tool {
 
 export class Bell extends SoundEmitter {
   static label = '铃铛';
-  static icon = '🔔';
+  static icon = '<i class="fa-regular fa-bell"></i>';
   static size: readonly [number, number] = [1, 1];
   static gravity = false;
   static shape = `

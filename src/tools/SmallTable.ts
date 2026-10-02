@@ -4,7 +4,7 @@ import { Tool } from './Tool';
 
 export class SmallTable extends Tool {
   static label = '小桌板';
-  static icon = '🪑';
+  static icon = '<i class="fa-solid fa-xmarks-lines"></i>';
   static size: readonly [number, number] = [6, 1];
   static gravity = false;
   static isPlatform = true;
