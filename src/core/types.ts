@@ -57,4 +57,6 @@ export interface Occluder {
   diffraction: [boolean, boolean];
   reflect: boolean;
   seg: Segment;
+  nx: number;
+  ny: number;
 }

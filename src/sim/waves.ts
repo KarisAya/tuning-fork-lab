@@ -9,8 +9,8 @@ import {
   MAX_TRAVEL_DISTANCE,
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
-import { clamp, distanceSquarePointSegment, circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
-import type { Point, Segment, Occluder, Wave } from '../core/types';
+import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
+import type { Point, Occluder, Wave } from '../core/types';
 import { state } from '../state';
 import { collectOccluders, isPointOnSegment } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
@@ -75,19 +75,18 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
 }
 
 /** 由一条边生成衍射子波：以边缘为新的点源。 */
-function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, incidentSource: Point,): Wave | null {
+function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, incidentSource: Point): Wave | null {
   const edge = o.seg[edgeIndex];
+  const [ax, ay] = o.seg[0];
+  const [x, y] = parent.position;
+  if (Math.abs((x - ax) * o.nx + (y - ay) * o.ny) < 0.5) { return null; }
   const nextTravelDistance = parent.travelDistance + parent.r;
   const next = makeWave(edge, parent.freq, 0, nextTravelDistance);
   next.hue = parent.hue;
-  next.source = [...edge]
-  next.reflections = [];
-  next.birthR = 0;
-  next.diffraction = { board: o, edgeIndex, edge: [edge[0], edge[1]], incidentSource: [incidentSource[0], incidentSource[1]] };
+  next.diffraction = { board: o, edgeIndex, edge: edge, incidentSource: incidentSource };
   next.diffractionDepth = parent.diffractionDepth + 1;
   return next;
 }
-
 
 function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   // if (wave.reflections.length > MAX_REFLECTION_DEPTH) return;
@@ -116,41 +115,37 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   // -------------------------
   // 衍射
   // -------------------------
-  // const lastReflection = wave.reflections[wave.reflections.length - 1];
-  // const [sx, sy] = wave.position;
-  // const rSq = wave.r * wave.r;
-  // for (const [k, o] of state.occluders) {
-  //   if (wave.diffraction?.board === o) { continue; }
-  //   if (lastReflection?.occ === o) { continue; }
-  //   // if (isPointOnSegment(wave.position, o.seg)) { continue; }
-  //   for (const i of [0, 1]) {
-  //     if (!o.diffraction[i]) { continue; }
-  //     const key = `${k}:${i}`;
-  //     if (wave.emittedDiffractions.has(key)) { continue; }
-  //     const [x, y] = o.seg[i];
-  //     const dx = x - sx;
-  //     const dy = y - sy;
-  //     if (rSq < dx * dx + dy * dy - 1e-3) { continue; }
-  //     const path = getWavePathToPoint(wave, o.seg[i], k);
-  //     if (!path) continue;
-  //     const incidentSource = getIncidentSource(wave, path);
-  //     const child = createDiffractionWave(wave, o, i, incidentSource);
-  //     if (!child) continue;
-  //     wave.emittedDiffractions.add(key);
-  //     push(child);
-  //   }
-  // }
+  const lastkey = wave.reflections[wave.reflections.length - 1]?.occ.key;
+  const [sx, sy] = wave.position;
+  const rSq = wave.r * wave.r;
+  for (const [k, o] of state.occluders) {
+    if (wave.diffraction?.board.key === k) { continue; }
+    if (lastkey === k) { continue; }
+    for (const i of [0, 1]) {
+      if (!o.diffraction[i]) { continue; }
+      const key = `${k}:${i}`;
+      if (wave.emittedDiffractions.has(key)) { continue; }
+      const [x, y] = o.seg[i];
+      const dx = x - sx;
+      const dy = y - sy;
+      if (rSq < dx * dx + dy * dy - 1e-3) { continue; }
+      const path = getWavePathToPoint(wave, o.seg[i], k);
+      if (!path) continue;
+      const incidentSource = getIncidentSource(wave, path);
+      const child = createDiffractionWave(wave, o, i, incidentSource);
+      if (!child) continue;
+      wave.emittedDiffractions.add(key);
+      push(child);
+    }
+  }
 }
-
 
 export function updateWaves(dt: number): void {
   if (!state.waves.length) return;
-  collectOccluders();
+  if (state.occluders.size === 0) { collectOccluders(); }
   for (let i = state.waves.length - 1; i >= 0; i -= 1) {
     const wave = state.waves[i];
     wave.r += state.waveSpeed * dt;
-    // 一旦波弱到不值得继续做反射/衍射计算，立即停止二级波生成，
-    // 但不要立即删除。保留一个短暂的淡出阶段，让动画连续。
     if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
       wave.fadeOut -= dt / WAVE_FADE_DURATION;
       if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) {

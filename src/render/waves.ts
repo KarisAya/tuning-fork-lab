@@ -367,19 +367,17 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   tmpIgnore.clear();
   tmpIgnore.add(info.board.key);
   const ignore = tmpIgnore;
-  const edgePt = info.edge;
-  const radius = wave.r;
   const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
   const stepAngle = TAU / steps;
   const hue = wave.hue.toFixed(1);
-  const [[aX, aY], [bX, bY]] = boardOcc.seg;
-  const eX = info.incidentSource[0];
-  const eY = info.incidentSource[1];
+  const [aX, aY] = info.edge
+  const [bX, bY] = boardOcc.seg[1 - info.edgeIndex];
+  const [eX, eY] = info.incidentSource;
   // ---- 每波常量：位置项 ----
   const positionFactor = diffractionPositionFactor(boardOcc, info.edgeIndex, info.incidentSource, wave.r);
   // ---- 每波常量：入射方向单位向量 ----
-  const inDX = eX - edgePt[0];
-  const inDY = eY - edgePt[1];
+  const inDX = eX - aX;
+  const inDY = eY - aY;
   const inLen = Math.sqrt(inDX * inDX + inDY * inDY) || 1;
   const inUx = inDX / inLen;
   const inUy = inDY / inLen;
@@ -394,6 +392,9 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   const vecAE1Y = e1Y - aY;
   const crossAB_AE1 = vecABX * vecAE1Y - vecABY * vecAE1X;
   const hasWedge = Math.abs(crossAB_AE1) > 1e-9;
+  const edgePt = info.edge;
+  const radius = wave.r;
+
   const runs: ArcRun[] = [];
   let runStart = -1;
   let runEnd = 0;
@@ -429,7 +430,7 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     runAlpha = positionFactor * angleFactor;
   }
   flush();
-  strokeArcRuns(edgePt, radius, runs, hue, 90, 66);
+  strokeArcRuns(info.edge, radius, runs, hue, 90, 66);
 }
 
 // ---------------------------------------------------------------------------

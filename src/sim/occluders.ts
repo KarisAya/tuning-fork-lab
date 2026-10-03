@@ -11,25 +11,28 @@ export function isPointOnSegment(p: Point, seg: Segment) {
 }
 
 export function collectOccluders(): void {
-  if (state.occluders.size !== 0) { return; }
   console.log('Collecting occluders...');
-  const seglist: UniSeg[] = [];
+  const olist: [UniSeg, number, number][] = [];
   for (const item of state.items) {
     const occluder = item.occluder;
-    if (occluder) {
-      seglist.push(occluder);
-    };
+    if (!occluder) { continue; }
+    const [[ax, ay], [bx, by]] = occluder[1];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-6) { continue; }
+    olist.push([occluder, -dy / len, dx / len]);
   }
-  for (let i = 0; i < seglist.length; i++) {
-    const [key, seg, reflect] = seglist[i];
+  for (let i = 0; i < olist.length; i++) {
+    const [[key, seg, reflect], nx, ny] = olist[i];
     const diffraction = [true, true] as [boolean, boolean];
-    for (let j = 0; j < seglist.length; j++) {
+    for (let j = 0; j < olist.length; j++) {
       if (i === j) { continue; }
-      const other = seglist[j][1];
-      diffraction[0] = diffraction[0] && !isPointOnSegment(seg[0], other);
-      diffraction[1] = diffraction[1] && !isPointOnSegment(seg[1], other);
+      const other = olist[j][0][1];
+      diffraction[0] = diffraction[0] && isPointOnSegment(seg[0], other);
+      diffraction[1] = diffraction[1] && isPointOnSegment(seg[1], other);
       if (!diffraction[0] && !diffraction[1]) { break; }
     }
-    state.occluders.set(key, { key, diffraction, reflect, seg })
+    state.occluders.set(key, { key, diffraction, reflect, seg, nx, ny })
   }
 }
