@@ -63,7 +63,9 @@ export function emitWaveAt(source: Point, freq: number): void {
 /** 由一次命中生成反射子波：镜像发射点 + 展开路径。 */
 function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | null {
   if (!o.reflect) { return null; }
-  if (parent.reflections.some((hop) => hop.occ.key === o.key)) { return null; }
+  // if (parent.reflections.some((hop) => hop.occ.key === o.key)) { return null; }
+  const last = parent.reflections.length
+  if (last > 0 && parent.reflections[last - 1].occ.key === o.key) { return null; }
   const nextTravelDistance = parent.travelDistance + parent.r;
   const position = reflectPointAcrossLine(parent.position, o.seg);
   const next = makeWave(position, parent.freq, parent.r, nextTravelDistance, parent.source);
@@ -150,14 +152,11 @@ export function updateWaves(dt: number): void {
     // 一旦波弱到不值得继续做反射/衍射计算，立即停止二级波生成，
     // 但不要立即删除。保留一个短暂的淡出阶段，让动画连续。
     if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
-      wave.fadeOut = Math.max(0, wave.fadeOut - dt / WAVE_FADE_DURATION);
+      wave.fadeOut -= dt / WAVE_FADE_DURATION;
       if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) {
         state.waves.splice(i, 1);
-        continue;
       }
-    }
-    else {
-      wave.fadeOut = 1;
+      continue;
     }
     if (wave.skipTag) continue;
     const waveCount = state.waves.length

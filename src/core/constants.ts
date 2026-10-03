@@ -13,8 +13,7 @@ export const WAVE_SPEED = GRID * 4;
 export const WAVE_LW = 1.05;
 export const MAX_TRAVEL_DISTANCE = GRID * 32;
 export const MIN_WAVE_EFFECTIVE_ALPHA = 0.018;
-export const WAVE_FADE_DURATION = 10;
-export const WAVE_REMOVE_ALPHA = 0.01;
+export const WAVE_FADE_DURATION = 1;
 
 
 // 发射间隔端点（秒）：最低频 → 最高频

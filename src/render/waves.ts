@@ -4,7 +4,6 @@ import {
   SECONDARY_RENDER_SAMPLES,
   TAU,
   WAVE_LW,
-  WAVE_REMOVE_ALPHA,
 } from '../core/constants';
 import type { Point, Wave } from '../core/types';
 import {
@@ -159,7 +158,6 @@ function strokeArcRuns(
 
   for (const [key, arcs] of buckets) {
     const alpha = key * ALPHA_STEP;
-    if (alpha < WAVE_REMOVE_ALPHA) continue;
     waveCtx.strokeStyle = getStrokeColor(hue, sat, light, alpha);
     waveCtx.beginPath();
     for (let i = 0; i < arcs.length; i += 1) {
@@ -197,7 +195,7 @@ function drawDirectWave(wave: Wave, baseAlpha: number): void {
   let runAlpha = 0;
 
   const flush = (endAngle: number): void => {
-    if (runStart < 0 || runAlpha < WAVE_REMOVE_ALPHA) {
+    if (runStart < 0) {
       runStart = -1;
       runAlpha = 0;
       return;
@@ -212,7 +210,6 @@ function drawDirectWave(wave: Wave, baseAlpha: number): void {
     const ux = fastCos(angle);
     const uy = fastSin(angle);
     const alpha = baseAlpha * directVisibility(wave, ux, uy, angle, cache);
-    if (alpha < WAVE_REMOVE_ALPHA) { flush(i * stepAngle); continue; }
     const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
     if (runStart < 0) {
       runStart = i * stepAngle;
@@ -455,7 +452,6 @@ export function renderWaves(): void {
 
   for (const wave of state.waves) {
     const alpha = renderWaveAlpha(wave);
-    if (alpha < WAVE_REMOVE_ALPHA) continue;
     if (!circleRingIntersectsViewport(wave.position, wave.r, w, h)) continue;
     if (wave.reflections.length > 0) { reflectedWaves.push([wave, alpha]); }
     else if (wave.diffraction) { diffractionWaves.push([wave, alpha]); }
