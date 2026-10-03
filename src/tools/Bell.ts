@@ -159,6 +159,4 @@ export class Bell extends SoundEmitter {
       this.svg.style.filter = `brightness(${br}) drop-shadow(0 0 ${bl}px rgba(${r},${g},${b},${a}))`;
     } else { this.svg.style.filter = ''; }
   }
-  get isStable(): boolean { return true; }
-  stepPhysics(): void { }
 }

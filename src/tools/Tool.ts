@@ -15,41 +15,18 @@ interface LandingResult {
 }
 
 export abstract class Tool {
-
-
-  get w(): number { return this.gw * GRID; }
-
-  get h(): number { return this.gh * GRID; }
-
-  /** 是否作为波的遮挡体 */
-  get occludesWaves(): boolean { return false; }
-
-  /** 是否反射波。 */
-  get reflectsWaves(): boolean { return false; }
-
-  /** 作为遮挡体的几何线段；默认无。 */
-  occluderSegment(): Segment | null { return null; }
-
-  /** 遮挡体几何指纹，用于衍射分支去重。 */
-  occluderKey(): string { return `${this.px},${this.py},${this.w},${this.h}`; }
-  fitElement(): void {
-    this.el.style.width = `${this.w}px`;
-    this.el.style.height = `${this.h}px`;
-  }
-
-
   static size: readonly [number, number];
   static shape: string;
   static label: string;
   static icon: string;
   static isPlatform = false;
   static friction = FRICTION * GRAVITY;
-
-
+  static physics = true;
 
   static contextMenu(item: Tool): HTMLElement { return createContextMenu(item, (item.constructor as typeof Tool).label)[0]; }
+
   get isStable(): boolean { return this.grounded && this.vx === 0 }
-  /** 道具落地时触发。注意：此时 Y 轴速度可能不为 0 */
+
   protected onStable(): void { this.snapToGrid(); }
 
   protected onTick(_dt: number): void { }
@@ -66,7 +43,9 @@ export abstract class Tool {
     this.py = clamp(py, 0, Math.max(0, state.deskH - this.h));
     this.render();
   }
+
   protected onClick(): void { }
+
   protected onRelease(moved: boolean): void {
     this.dragging = false;
     this.el.classList.remove('dragging');
@@ -75,7 +54,6 @@ export abstract class Tool {
     if (!moved) { this.onClick(); }
     this.render();
   }
-
 
   type: string;
   gw: number;
@@ -90,6 +68,10 @@ export abstract class Tool {
   dragging = false;
   removed = false;
   el: HTMLDivElement;
+
+  get w(): number { return this.gw * GRID; }
+
+  get h(): number { return this.gh * GRID; }
 
   constructor(gx: number, gy: number) {
     const C = this.constructor as typeof Tool;
@@ -210,7 +192,8 @@ export abstract class Tool {
   }
 
   update(dt: number): void {
-    if (!this.dragging) {
+    const C = this.constructor as typeof Tool;
+    if (C.physics && !this.dragging) {
       this.stepPhysics(dt)
       if (this.isStable) { this.onStable(); }
     }

@@ -48,7 +48,7 @@ export class TuningFork extends Bell {
     this.timers = [];
     this.tines = this.svg.querySelector('.fork-tines') as SVGPathElement;
   }
-  resonance(other: TuningFork): void {
+  private resonance(other: TuningFork): void {
     const ratio = other.freq > this.freq ? other.freq / this.freq : this.freq / other.freq;
     if (Math.abs(ratio - Math.round(ratio)) > RES_DETUNE) { return; }
     const dx = other.px - this.px
