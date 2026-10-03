@@ -2,18 +2,12 @@
 // 只依赖遮挡体快照，不依赖任何具体工具类。
 
 import { DIFF_DECAY, DIFF_EDGE_POWER, GRID, TAU, HALF_PI, SHADOW_SOFTNESS } from '../core/constants';
-import { rayHitSegment, reflectPointAcrossLine } from '../core/geometry';
-import { clamp, smoothstep } from '../core/math';
-import type { Occluder, Point, Wave, WaveObstacle } from '../core/types';
+import { clamp, smoothstep, distanceSquarePointSegment, rayHitSegment, reflectPointAcrossLine } from '../core/math';
+import type { Occluder, Point, Wave } from '../core/types';
 import { state } from '../state';
-import { getOccluder } from './occluders';
 
 /** 起点到终点之间是否被任何板子挡住（ignore 中的板忽略）。 */
-export function segmentBlockedByBoards(
-  start: Point,
-  end: Point,
-  ignore: Set<WaveObstacle> = new Set(),
-): boolean {
+export function segmentBlockedByBoards(start: Point, end: Point, ignore: Set<string>,): boolean {
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
   const lenSq = dx * dx + dy * dy;
@@ -22,13 +16,10 @@ export function segmentBlockedByBoards(
   const ux = dx / len;
   const uy = dy / len;
   const tMax = len - 1e-3;
-  const sx = start[0];
-  const sy = start[1];
   const occluders = state.occluders;
-  for (let i = 0; i < occluders.length; i += 1) {
-    const o = occluders[i];
-    if (ignore.has(o.item)) continue;
-    const hit = rayHitSegment(sx, sy, ux, uy, ...o.seg);
+  for (const [k, o] of occluders) {
+    if (ignore.has(k)) continue;
+    const hit = rayHitSegment(start, ux, uy, o.seg);
     if (!hit) continue;
     if (hit.t > 1e-3 && hit.t < tMax) return true;
   }
@@ -41,67 +32,48 @@ export function segmentBlockedByBoards(
  * 对直接波：source -> target。
  * 对反射波：使用展开法反解每一处实际反射点。
  */
-const EMPTY_IGNORE: Set<WaveObstacle> = new Set();
-export function getWavePathToPoint(
-  wave: Wave,
-  target: Point,
-  finalIgnore?: WaveObstacle,
-): Point[] | null {
-  const virtualDistance = Math.hypot(target[0] - wave.x, target[1] - wave.y);
-  if (wave.reflections.length > 0 && virtualDistance + 1e-3 < wave.birthR) {
-    return null;
-  }
+const EMPTY_IGNORE: Set<string> = new Set();
+export function getWavePathToPoint(wave: Wave, target: Point, finalIgnore?: string): Point[] | null {
   if (wave.reflections.length === 0) {
-    const source: Point = [wave.sourceX, wave.sourceY];
+    const source = wave.source;
     let ignore;
-    if (finalIgnore) {
-      ignore = new Set<WaveObstacle>();
-      ignore.add(finalIgnore);
-    } else { ignore = EMPTY_IGNORE; }
+    if (finalIgnore) { ignore = new Set<string>(); ignore.add(finalIgnore); }
+    else { ignore = EMPTY_IGNORE; }
     if (segmentBlockedByBoards(source, target, ignore)) { return null; }
     return [source, target];
   }
-  let currentSource: Point = [wave.x, wave.y];
-  let currentTarget: Point = [target[0], target[1]];
+  const [sourceX, sourceY] = wave.source;
+  const [targetX, targetY] = target;
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const virtualDistSq = dx * dx + dy * dy;
+  if (virtualDistSq + 1e-3 < wave.birthR * wave.birthR) { return null; }
+  let currentSource: Point = [...wave.position];
+  let currentTarget: Point = [...target];
   const reverseBounces: Point[] = [];
   for (let i = wave.reflections.length - 1; i >= 0; i -= 1) {
-    const hop = wave.reflections[i];
-    const board = getOccluder(hop.item);
+    const board = wave.reflections[i].occ
     if (!board) return null;
     const dx = currentTarget[0] - currentSource[0];
     const dy = currentTarget[1] - currentSource[1];
-    const distance = Math.hypot(dx, dy);
+    const distance = Math.sqrt(dx * dx + dy * dy);
     if (distance < 1e-6) return null;
-    const hit = rayHitSegment(
-      currentSource[0], currentSource[1], dx / distance, dy / distance, ...board.seg,
-    );
-    if (!hit || hit.t > distance + 1e-3) {
-      return null;
-    }
+    const hit = rayHitSegment(currentSource, dx / distance, dy / distance, board.seg,);
+    if (!hit || hit.t > distance + 1e-3) { return null; }
     reverseBounces.push([hit.x, hit.y]);
-    currentSource = reflectPointAcrossLine(currentSource[0], currentSource[1], board.seg);
-    currentTarget = reflectPointAcrossLine(currentTarget[0], currentTarget[1], board.seg);
+    currentSource = reflectPointAcrossLine(currentSource, board.seg);
+    currentTarget = reflectPointAcrossLine(currentTarget, board.seg);
   }
   const bounces = reverseBounces.reverse();
-  const source: Point = [wave.sourceX, wave.sourceY];
+  const source: Point = [sourceX, sourceY];
   const path: Point[] = [source, ...bounces, target];
   for (let i = 0; i < path.length - 1; i += 1) {
-    const ignore = new Set<WaveObstacle>();
-    if (i === 0) {
-      ignore.add(wave.reflections[0].item);
-    }
-    if (i > 0 && i - 1 < wave.reflections.length) {
-      ignore.add(wave.reflections[i - 1].item);
-    }
-    if (i < wave.reflections.length) {
-      ignore.add(wave.reflections[i].item);
-    }
-    if (i === path.length - 2 && finalIgnore) {
-      ignore.add(finalIgnore);
-    }
-    if (segmentBlockedByBoards(path[i], path[i + 1], ignore)) {
-      return null;
-    }
+    const ignore = new Set<string>();
+    if (i === 0) { ignore.add(wave.reflections[0].occ.key); }
+    if (i > 0 && i - 1 < wave.reflections.length) { ignore.add(wave.reflections[i - 1].occ.key); }
+    if (i < wave.reflections.length) { ignore.add(wave.reflections[i].occ.key); }
+    if (i === path.length - 2 && finalIgnore) { ignore.add(finalIgnore); }
+    if (segmentBlockedByBoards(path[i], path[i + 1], ignore)) { return null; }
   }
   return path;
 }
@@ -177,25 +149,6 @@ export function getIncidentSource(wave: Wave, path: Point[]): Point {
  * 用软边过渡代替硬遮罩，因此波前穿过板子时不会因为帧间半径变化而产生硬闪。
  * 同时仍然遵守真实几何：板子后方不会永久恢复成直达波。
  */
-/** 点到线段最短距离的平方 */
-function pointSegDistSq(
-  px: number, py: number,
-  x0: number, y0: number,
-  x1: number, y1: number,
-): number {
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const lenSq = dx * dx + dy * dy;
-  let t = 0;
-  if (lenSq > 0) {
-    t = ((px - x0) * dx + (py - y0) * dy) / lenSq;
-    if (t < 0) t = 0;
-    else if (t > 1) t = 1;
-  }
-  const ex = px - (x0 + t * dx);
-  const ey = py - (y0 + t * dy);
-  return ex * ex + ey * ey;
-}
 
 /** 归一化到 [0, TAU) */
 function normAngle(a: number): number {

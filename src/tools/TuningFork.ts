@@ -63,8 +63,7 @@ export class TuningFork extends Bell {
       if (other.removed) { return true; }
       if (other.emitTimer > 0) { return true; }
       other.emitTimer = 1;
-      const source = other.emissionPoint
-      const wave = makeWave(source[0], source[1], other.freq)
+      const wave = makeWave(other.emissionPoint, other.freq)
       wave.travelDistance = d
       wave.skipTag = true
       pushWave(wave);

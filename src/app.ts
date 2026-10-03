@@ -37,6 +37,7 @@ export function layout(): void {
   canvas.style.width = `${state.deskW}px`;
   canvas.style.height = `${state.deskH}px`;
   waveCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  for (const item of state.items) item.keepInsideDesk();
 }
 
 export function togglePause(): void {

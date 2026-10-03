@@ -1,4 +1,4 @@
-import { RESTITUTION, FRICTION_ACCELERATION } from '../core/constants';
+import { RESTITUTION } from '../core/constants';
 import type { SerializedItem } from '../core/types';
 import { SoundEmitter, appendToneControls } from './Bell';
 import { clamp } from '../core/math';

@@ -2,7 +2,7 @@
 
 import { GRID } from '../core/constants';
 import { clamp } from '../core/math';
-import type { Segment, SerializedItem } from '../core/types';
+import type { Occluder, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { Tool } from './Tool';
 import { button, createContextMenu, rangeControl, rowLabel } from '../ui/menu';
@@ -24,35 +24,42 @@ export class EchoBoard extends Tool {
 
   dir: BoardDirection = 'v';
   len: number = DEFAULT_LEN;
-  reflect = true;
+  reflect: boolean = true;
   constructor(gx: number, gy: number) {
     super(gx, gy);
     this.applyGeom();
   }
-
-  get occludesWaves(): boolean { return true; }
-
-  get reflectsWaves(): boolean { return this.reflect; }
-
-  occluderSegment(): Segment {
-    if (this.dir === 'h') {
-      const y = this.py + this.gh * GRID;
-      return [this.px, y, this.px + this.gw * GRID, y];
-    } else {
-      const x = this.px;
-      return [x, this.py, x, this.py + this.gh * GRID];
+  get occluder(): Occluder | null {
+    if (this.removed) { return null; }
+    if (this.dragging) { return null; }
+    const key = `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`;
+    const o = state.occluders.get(key)
+    if (o) { return o; }
+    const y = this.py + this.gh * GRID;
+    return {
+      diffraction: [true, true],
+      reflect: this.reflect,
+      seg: this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]],
+      key: key,
     }
+
   }
 
-  occluderKey(): string { return `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`; }
-
   applyGeom(): void {
+    const isH = this.dir === 'h';
+    if (isH) {
+      this.gw = this.len;
+      this.gh = 1;
+    } else {
+      this.gw = 1;
+      this.gh = this.len;
+    }
     const w = this.w;
     const h = this.h;
+    this.el.style.width = `${w}px`;
+    this.el.style.height = `${h}px`;
     const x = 0;
-    const [gw, gh, y, width, height] = this.dir === 'h' ? [this.len, 1, h - 5, w, 5] : [1, this.len, 0, 5, h];
-    this.gw = gw
-    this.gh = gh
+    const [y, width, height] = isH ? [h - 5, w, 5] : [0, 5, h];
     this.el.innerHTML = `\
 <svg viewBox="0 0 ${Math.max(1, w)} ${Math.max(1, h)}" xmlns="http://www.w3.org/2000/svg">
   <defs>

@@ -89,8 +89,7 @@ export abstract class SoundEmitter extends Tool {
   /** 触发一次发声（点击） */
   protected emitOnce(): void {
     this.emitTimer = 1
-    const source = this.emissionPoint
-    emitWaveAt(source[0], source[1], this.freq);
+    emitWaveAt(this.emissionPoint, this.freq);
   }
   protected onClick(): void { this.emitOnce(); }
   protected onTick(dt: number): void {

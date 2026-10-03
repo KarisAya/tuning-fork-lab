@@ -3,7 +3,7 @@
 
 import { FRICTION, GRAVITY, GRID, RESTITUTION } from '../core/constants';
 import { clamp } from '../core/math';
-import type { Segment, SerializedItem } from '../core/types';
+import type { Occluder, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { deskEl } from '../ui/dom';
 import { createContextMenu } from '../ui/menu';
@@ -72,6 +72,9 @@ export abstract class Tool {
   get w(): number { return this.gw * GRID; }
 
   get h(): number { return this.gh * GRID; }
+
+  get occluder(): Occluder | null { return null; }
+
 
   constructor(gx: number, gy: number) {
     const C = this.constructor as typeof Tool;

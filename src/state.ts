@@ -13,7 +13,7 @@ export interface LabState {
   paused: boolean;
   items: Tool[];
   waves: Wave[];
-  occluders: Occluder[];
+  occluders: Map<string, Occluder>;
 }
 
 export const state: LabState = {
@@ -25,5 +25,5 @@ export const state: LabState = {
   paused: false,
   items: [],
   waves: [],
-  occluders: [],
+  occluders: new Map<string, Occluder>(),
 };
