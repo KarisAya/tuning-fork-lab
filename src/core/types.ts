@@ -50,10 +50,12 @@ export interface Wave {
   emittedDiffractions: Set<string>;
 }
 
+export type UniSeg = [string, Segment, boolean]
+
 /** 采集得到的遮挡体快照（模拟层内部使用）。 */
 export interface Occluder {
+  key: string;
   diffraction: [boolean, boolean];
   reflect: boolean;
   seg: Segment;
-  key: string;
 }

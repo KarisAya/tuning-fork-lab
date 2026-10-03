@@ -2,7 +2,7 @@
 
 import { GRID } from '../core/constants';
 import { clamp } from '../core/math';
-import type { Occluder, SerializedItem } from '../core/types';
+import type { UniSeg, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { Tool } from './Tool';
 import { button, createContextMenu, rangeControl, rowLabel } from '../ui/menu';
@@ -29,20 +29,13 @@ export class EchoBoard extends Tool {
     super(gx, gy);
     this.applyGeom();
   }
-  get occluder(): Occluder | null {
+  get occluder() {
     if (this.removed) { return null; }
     if (this.dragging) { return null; }
     const key = `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`;
-    const o = state.occluders.get(key)
-    if (o) { return o; }
     const y = this.py + this.gh * GRID;
-    return {
-      diffraction: [true, true],
-      reflect: this.reflect,
-      seg: this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]],
-      key: key,
-    }
-
+    const seg = (this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]])
+    return [key, seg, this.reflect] as UniSeg
   }
 
   applyGeom(): void {

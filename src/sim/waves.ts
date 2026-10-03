@@ -12,7 +12,7 @@ import { freqHue } from '../core/frequency';
 import { clamp, distanceSquarePointSegment, circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
 import type { Point, Segment, Occluder, Wave } from '../core/types';
 import { state } from '../state';
-import { collectOccluders } from './occluders';
+import { collectOccluders, isPointOnSegment } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
 
 /** 2D 圆柱波近似：1/sqrt(r)。 */
@@ -87,6 +87,7 @@ function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, inc
   return next;
 }
 
+
 function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   // if (wave.reflections.length > MAX_REFLECTION_DEPTH) return;
   // if (wave.diffractionDepth > MAX_DIFFRACTION_DEPTH) return;
@@ -114,29 +115,30 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   // -------------------------
   // 衍射
   // -------------------------
-  const lastReflection = wave.reflections[wave.reflections.length - 1];
-  const [sx, sy] = wave.position;
-  const rSq = wave.r * wave.r;
-  for (const [k, o] of state.occluders) {
-    if (wave.diffraction?.board === o) { continue; }
-    if (lastReflection?.occ === o) { continue; }
-    for (const i of [0, 1]) {
-      if (!o.diffraction[i]) { continue; }
-      const key = `${k}:${i}`;
-      if (wave.emittedDiffractions.has(key)) { continue; }
-      const [x, y] = o.seg[i];
-      const dx = x - sx;
-      const dy = y - sy;
-      if (rSq < dx * dx + dy * dy - 1e-3) { continue; }
-      const path = getWavePathToPoint(wave, o.seg[i], k);
-      if (!path) continue;
-      const incidentSource = getIncidentSource(wave, path);
-      const child = createDiffractionWave(wave, o, i, incidentSource);
-      if (!child) continue;
-      wave.emittedDiffractions.add(key);
-      push(child);
-    }
-  }
+  // const lastReflection = wave.reflections[wave.reflections.length - 1];
+  // const [sx, sy] = wave.position;
+  // const rSq = wave.r * wave.r;
+  // for (const [k, o] of state.occluders) {
+  //   if (wave.diffraction?.board === o) { continue; }
+  //   if (lastReflection?.occ === o) { continue; }
+  //   // if (isPointOnSegment(wave.position, o.seg)) { continue; }
+  //   for (const i of [0, 1]) {
+  //     if (!o.diffraction[i]) { continue; }
+  //     const key = `${k}:${i}`;
+  //     if (wave.emittedDiffractions.has(key)) { continue; }
+  //     const [x, y] = o.seg[i];
+  //     const dx = x - sx;
+  //     const dy = y - sy;
+  //     if (rSq < dx * dx + dy * dy - 1e-3) { continue; }
+  //     const path = getWavePathToPoint(wave, o.seg[i], k);
+  //     if (!path) continue;
+  //     const incidentSource = getIncidentSource(wave, path);
+  //     const child = createDiffractionWave(wave, o, i, incidentSource);
+  //     if (!child) continue;
+  //     wave.emittedDiffractions.add(key);
+  //     push(child);
+  //   }
+  // }
 }
 
 

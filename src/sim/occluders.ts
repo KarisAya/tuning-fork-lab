@@ -1,7 +1,7 @@
 // 遮挡体采集：把「能挡波的工具」折算成波计算用的线段快照。
 
 import { GRID } from '../core/constants';
-import type { Point, Segment, Occluder } from '../core/types';
+import type { Point, Segment, UniSeg } from '../core/types';
 import { distanceSquarePointSegment } from '../core/math';
 import { state } from '../state';
 
@@ -13,24 +13,23 @@ export function isPointOnSegment(p: Point, seg: Segment) {
 export function collectOccluders(): void {
   // 1. 收集当前有效的遮挡体
   state.occluders.clear();
-  const next: Occluder[] = [];
+  const seglist: UniSeg[] = [];
   for (const item of state.items) {
     const occluder = item.occluder;
     if (occluder) {
-      next.push(occluder);
-      state.occluders.set(occluder.key, occluder);
-    }
+      seglist.push(occluder);
+    };
   }
-  for (let i = 0; i < next.length; i++) {
-    for (let j = 0; j < next.length; j++) {
+  for (let i = 0; i < seglist.length; i++) {
+    const [key, seg, reflect] = seglist[i];
+    const diffraction = [true, true] as [boolean, boolean];
+    for (let j = 0; j < seglist.length; j++) {
       if (i === j) { continue; }
-      const occluder = next[i];
-      const other = next[j];
-      for (const k of [0, 1]) {
-        if (occluder.diffraction[k]) {
-          occluder.diffraction[k] = isPointOnSegment(occluder.seg[k], other.seg)
-        }
-      }
+      const other = seglist[j][1];
+      diffraction[0] = diffraction[0] && !isPointOnSegment(seg[0], other);
+      diffraction[1] = diffraction[1] && !isPointOnSegment(seg[1], other);
+      if (!diffraction[0] && !diffraction[1]) { break; }
     }
+    state.occluders.set(key, { key, diffraction, reflect, seg })
   }
 }
