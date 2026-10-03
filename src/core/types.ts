@@ -1,7 +1,7 @@
 // 跨模块共享的数据类型。这里只放结构性描述，不引用任何具体工具类。
 
-export type Point = [number, number];
-export type Segment = [Point, Point];
+export type Point = readonly [number, number];
+export type Segment = readonly [Point, Point];
 
 
 export interface SerializedItem {
@@ -20,7 +20,6 @@ export interface Removable {
 
 export interface ReflectionHop {
   occ: Occluder;
-  seg: Segment;
   bounce: Point;
 }
 

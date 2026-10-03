@@ -409,9 +409,6 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
     runStart = -1;
   };
-
-  // 复用同一个 Point 对象，避免每采样一次小分配
-  const p: Point = [0, 0];
   for (let k = 0; k < steps; k += 1) {
     const a0 = k * stepAngle;
     const a1 = a0 + stepAngle;
@@ -428,12 +425,8 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
         continue;
       }
     }
-    p[0] = aX + cam * radius;
-    p[1] = aY + sam * radius;
-    if (segmentBlockedByBoards(edgePt, p, ignore)) {
-      flush();
-      continue;
-    }
+    const p = [aX + cam * radius, aY + sam * radius] as Point;
+    if (segmentBlockedByBoards(edgePt, p, ignore)) { flush(); continue; }
     const angleFactor = diffractionAngleFactor(edgePt, inUx, inUy, p);
     flush();
     runStart = a0;

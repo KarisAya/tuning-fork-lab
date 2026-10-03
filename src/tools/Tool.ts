@@ -25,7 +25,7 @@ export abstract class Tool {
 
   static contextMenu(item: Tool): HTMLElement { return createContextMenu(item, (item.constructor as typeof Tool).label)[0]; }
 
-  get isStable(): boolean { return this.grounded && this.vx === 0 }
+  get isStable(): boolean { return this.grounded && this.vx === 0; }
 
   protected onStable(): void { this.snapToGrid(); }
 
@@ -52,6 +52,7 @@ export abstract class Tool {
     this.vx = 0;
     this.vy = 0;
     if (!moved) { this.onClick(); }
+    else if (!(this.constructor as typeof Tool).physics) { this.onStable(); }
     this.render();
   }
 
@@ -102,8 +103,13 @@ export abstract class Tool {
       let moved = false;
       this.onDrag();
       const onPointerMove = (ev: PointerEvent): void => {
-        moved ||= Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4;
-        this.onMove(ev.clientX - offsetX, ev.clientY - offsetY)
+        if (moved) {
+          this.onMove(ev.clientX - offsetX, ev.clientY - offsetY)
+        } else {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY
+          moved = (dx * dx + dy * dy) < 16
+        }
       };
       const onPointerUp = (_ev: PointerEvent): void => {
         window.removeEventListener('pointermove', onPointerMove);

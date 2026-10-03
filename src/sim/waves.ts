@@ -25,16 +25,22 @@ export function renderWaveAlpha(wave: Wave): number {
   return wave.skipTag ? alpha * 0.5 : alpha;
 }
 
-export function makeWave(source: Point, freq: number, radius = 0, travelDistance = 0,): Wave {
+export function makeWave(
+  position: Point,
+  freq: number,
+  radius = 0,
+  travelDistance = 0,
+  source: Point | null = null
+): Wave {
   return {
-    position: [...source],
+    position: position,
     r: radius,
     hue: freqHue(freq),
     freq,
     travelDistance,
-    source: [...source],
+    source: source || position,
     reflections: [],
-    birthR: 0,
+    birthR: radius,
     diffraction: null,
     diffractionDepth: 0,
     fadeOut: 1,
@@ -57,18 +63,11 @@ export function emitWaveAt(source: Point, freq: number): void {
 /** 由一次命中生成反射子波：镜像发射点 + 展开路径。 */
 function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | null {
   if (!o.reflect) { return null; }
-  if (parent.reflections.some((hop) => hop.occ === o)) { return null; }
+  if (parent.reflections.some((hop) => hop.occ.key === o.key)) { return null; }
   const nextTravelDistance = parent.travelDistance + parent.r;
   const position = reflectPointAcrossLine(parent.position, o.seg);
-  const next = makeWave(position, parent.freq, parent.r, nextTravelDistance);
-  next.hue = parent.hue;
-  next.source = [...parent.source];
-  next.reflections = [
-    ...parent.reflections,
-    { occ: o, seg: [...o.seg] as Segment, bounce: [bounce[0], bounce[1]] },
-  ];
-  next.birthR = parent.r;
-  next.diffraction = null;
+  const next = makeWave(position, parent.freq, parent.r, nextTravelDistance, parent.source);
+  next.reflections.push(...parent.reflections, { occ: o, bounce: [bounce[0], bounce[1]] });
   next.diffractionDepth = parent.diffractionDepth;
   return next;
 }
