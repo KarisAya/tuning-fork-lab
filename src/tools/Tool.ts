@@ -6,35 +6,76 @@ import { clamp } from '../core/math';
 import type { Segment, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { deskEl } from '../ui/dom';
-import { startDrag } from '../ui/drag';
 import { createContextMenu } from '../ui/menu';
-import { openMenu } from '../ui/menu-controller';
+import { openMenu, closeMenu } from '../ui/menu-controller';
 
 interface LandingResult {
   landed: boolean;
   landingY: number;
 }
 
-export class Tool {
-  static shape = '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" rx="12" fill="#8fb6ff"/></svg>';
-  static size: readonly [number, number] = [2, 2];
-  static label = '工具';
-  static icon = '▢';
-  static physics = true;
+export abstract class Tool {
+
+
+  get w(): number { return this.gw * GRID; }
+
+  get h(): number { return this.gh * GRID; }
+
+  /** 是否作为波的遮挡体 */
+  get occludesWaves(): boolean { return false; }
+
+  /** 是否反射波。 */
+  get reflectsWaves(): boolean { return false; }
+
+  /** 作为遮挡体的几何线段；默认无。 */
+  occluderSegment(): Segment | null { return null; }
+
+  /** 遮挡体几何指纹，用于衍射分支去重。 */
+  occluderKey(): string { return `${this.px},${this.py},${this.w},${this.h}`; }
+  fitElement(): void {
+    this.el.style.width = `${this.w}px`;
+    this.el.style.height = `${this.h}px`;
+  }
+
+
+  static size: readonly [number, number];
+  static shape: string;
+  static label: string;
+  static icon: string;
   static isPlatform = false;
   static friction = FRICTION * GRAVITY;
 
-  /** 新增工具时的默认纵向落点（网格）。 */
-  static spawnY(maxGY: number): number {
-    return this.physics ? 0 : Math.max(0, Math.floor(maxGY / 2));
+
+
+  static contextMenu(item: Tool): HTMLElement { return createContextMenu(item, (item.constructor as typeof Tool).label)[0]; }
+  get isStable(): boolean { return this.grounded && this.vx === 0 }
+  /** 道具落地时触发。注意：此时 Y 轴速度可能不为 0 */
+  protected onStable(): void { this.snapToGrid(); }
+
+  protected onTick(_dt: number): void { }
+
+  protected onDrag(): void {
+    this.dragging = true;
+    this.el.classList.add('dragging');
+    this.vx = 0;
+    this.vy = 0;
   }
 
-  static onMove(_item: Tool, _dt: number): void { }
-  static onClick(_item: Tool, _evt?: PointerEvent): void { }
-  static onContextMenu(item: Tool): HTMLElement {
-    return createContextMenu(item, (item.constructor as typeof Tool).label);
+  protected onMove(px: number, py: number): void {
+    this.px = clamp(px, 0, Math.max(0, state.deskW - this.w));
+    this.py = clamp(py, 0, Math.max(0, state.deskH - this.h));
+    this.render();
   }
-  static onRelease(_item: Tool): void { }
+  protected onClick(): void { }
+  protected onRelease(moved: boolean): void {
+    this.dragging = false;
+    this.el.classList.remove('dragging');
+    this.vx = 0;
+    this.vy = 0;
+    if (!moved) { this.onClick(); }
+    this.render();
+  }
+
 
   type: string;
   gw: number;
@@ -66,7 +107,26 @@ export class Tool {
     this.el.innerHTML = C.shape;
     deskEl.appendChild(this.el);
     this.el.addEventListener('pointerdown', (event) => {
-      startDrag(event, this);
+      if (event.button !== 0) { return; }
+      event.preventDefault();
+      closeMenu();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const offsetX = event.clientX - this.px;
+      const offsetY = event.clientY - this.py;
+      let moved = false;
+      this.onDrag();
+      const onPointerMove = (ev: PointerEvent): void => {
+        moved ||= Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4;
+        this.onMove(ev.clientX - offsetX, ev.clientY - offsetY)
+      };
+      const onPointerUp = (_ev: PointerEvent): void => {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        this.onRelease(moved);
+      };
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
     });
     this.el.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -75,31 +135,6 @@ export class Tool {
     });
     this.render();
   }
-
-  get w(): number { return this.gw * GRID; }
-
-  get h(): number { return this.gh * GRID; }
-
-  /** 是否作为波的遮挡体 */
-  get occludesWaves(): boolean { return false; }
-
-  /** 是否反射波。 */
-  get reflectsWaves(): boolean { return false; }
-
-  /** 作为遮挡体的几何线段；默认无。 */
-  occluderSegment(): Segment | null { return null; }
-
-  /** 遮挡体几何指纹，用于衍射分支去重。 */
-  occluderKey(): string { return `${this.px},${this.py},${this.w},${this.h}`; }
-
-  /** 拖拽松手后是否保留自身速度。 */
-  get hasSelfPropulsion(): boolean { return false; }
-
-  fitElement(): void {
-    this.el.style.width = `${this.w}px`;
-    this.el.style.height = `${this.h}px`;
-  }
-
   protected snapToGrid(): void {
     const maxGX = Math.max(0, Math.floor((state.deskW - this.w) / GRID));
     const maxGY = Math.max(0, Math.floor((state.deskH - this.h) / GRID));
@@ -156,7 +191,7 @@ export class Tool {
     }
     this.px += this.vx * dt;
   }
-  isStable(): boolean { return this.grounded && this.vx === 0 }
+
 
   protected applyRebound(): void {
     if (this.px < 0) {
@@ -167,17 +202,19 @@ export class Tool {
       this.vx = -this.vx * RESTITUTION;
     }
   }
+
   protected stepPhysics(dt: number): void {
     this.applyGravity(dt);
     this.applyFriction(dt);
     this.applyRebound();
-    if (this.isStable()) { this.snapToGrid(); }
   }
 
   update(dt: number): void {
-    const C = this.constructor as typeof Tool;
-    if (C.physics && !this.dragging) { this.stepPhysics(dt) }
-    C.onMove(this, dt);
+    if (!this.dragging) {
+      this.stepPhysics(dt)
+      if (this.isStable) { this.onStable(); }
+    }
+    this.onTick(dt);
     this.render();
   }
 

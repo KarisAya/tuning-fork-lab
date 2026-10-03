@@ -1,18 +1,40 @@
 // 铃铛：点击 / 持续发声，不参与共振。
-import { DEFAULT_LEVEL, DEFAULT_FREQ, FREQ_MAX, FREQ_MIN, TOP_LEVEL } from '../core/constants';
-import { setFreq, stepLevel, waveInterval } from '../core/frequency';
-import type { Point, WaveMode, SerializedItem } from '../core/types';
+import { DEFAULT_LEVEL, DEFAULT_FREQ, FREQ_MAX, FREQ_MIN, TOP_LEVEL, FREQ_TABLE } from '../core/constants';
+import { waveInterval } from '../core/frequency';
+import { clamp } from '../core/math';
+import type { Point, SerializedItem } from '../core/types';
 import { emitWaveAt } from '../sim/waves';
 import { Tool } from './Tool';
-import { button, createContextMenu, menuBody, rowLabel } from '../ui/menu';
+import { button, createContextMenu, rowLabel } from '../ui/menu';
 import { refreshMenu } from '../ui/menu-controller';
+
+type WaveMode = 'click' | 'continuous';
+export function setFreq(item: SoundEmitter, raw: number): void {
+  let value = Number.isFinite(raw) ? raw : FREQ_MIN;
+  value = clamp(value, FREQ_MIN, FREQ_MAX);
+  value = Math.round(value * 100) / 100;
+  item.freq = value;
+  item.intv = waveInterval(value);
+  item.level = FREQ_TABLE.findIndex((v) => Math.abs(v - value) < 0.005);
+}
+/** 按档位表上下切一档；不在档位上时取相邻档。 */
+export function stepLevel(item: SoundEmitter, direction: -1 | 1): void {
+  const cur = item.freq;
+  if (direction > 0) {
+    const next = FREQ_TABLE.find((v) => v > cur + 1e-6);
+    setFreq(item, next ?? FREQ_MAX);
+    return;
+  }
+  let prev: number | null = null;
+  for (const value of FREQ_TABLE) {
+    if (value < cur - 1e-6) { prev = value; }
+  }
+  setFreq(item, prev ?? FREQ_MIN);
+}
 
 
 // 发声类工具共用的菜单控件。
-
-/** 频率、档位、发声模式；`mode` 为 false 时不出模式开关（小车用）。 */
 export function appendToneControls(body: HTMLElement, item: SoundEmitter): void {
-
   body.appendChild(rowLabel('发声模式'));
   const modeRow = document.createElement('div');
   modeRow.className = 'menu-row menu-row-cells';
@@ -56,39 +78,28 @@ export function appendToneControls(body: HTMLElement, item: SoundEmitter): void 
     + `范围 ${FREQ_MIN} ~ ${FREQ_MAX} Hz`;
   body.appendChild(info);
 }
-
-
-
 export abstract class SoundEmitter extends Tool {
-  freq = DEFAULT_FREQ;
-  level = DEFAULT_LEVEL;
+  freq: number = DEFAULT_FREQ;
+  intv: number = waveInterval(DEFAULT_FREQ);
+  level: number = DEFAULT_LEVEL;
   mode: WaveMode = 'click';
-  emitTimer = 0;
+  /** 发声计时器 （归一化） */
+  emitTimer: number = 0;
   get emissionPoint(): Point { return [this.px + this.w / 2, this.py + this.h / 2]; }
   /** 触发一次发声（点击） */
   protected emitOnce(): void {
+    this.emitTimer = 1
     const source = this.emissionPoint
     emitWaveAt(source[0], source[1], this.freq);
   }
-
-  protected tickEmission(dt: number) {
-    this.emitTimer -= dt;
-    if (this.emitTimer <= 0) {
-      this.emitTimer = waveInterval(this.freq);
-      this.emitOnce()
-    }
+  protected onClick(): void { this.emitOnce(); }
+  protected onTick(dt: number): void {
+    if (this.emitTimer > 0) { this.emitTimer -= dt / this.intv; }
+    else if (this.mode === 'continuous') { this.emitOnce() }
   }
-
-  static onClick(raw: SoundEmitter): void { raw.emitOnce(); }
-  static onMove(raw: SoundEmitter, dt: number): void {
-    if (raw.mode === 'continuous') { raw.tickEmission(dt) }
-    else { raw.emitTimer = 0; }
-  }
-
-  static onContextMenu(item: SoundEmitter): HTMLElement {
-    const C = this.constructor as typeof SoundEmitter;
-    const root = createContextMenu(item, C.label);
-    appendToneControls(menuBody(root), item);
+  static contextMenu(item: SoundEmitter): HTMLElement {
+    const [root, body] = createContextMenu(item, this.label);
+    appendToneControls(body, item);
     return root;
   }
 
@@ -128,13 +139,26 @@ export class Bell extends SoundEmitter {
       <circle cx="12" cy="12" r="3.15" fill="#ffeaa3" opacity=".48"/>
       <circle cx="12" cy="12" r="1.25" fill="#8f5d12" opacity=".8"/>
     </svg>`;
-  static onMove(raw: Bell, dt: number): void {
-    super.onMove(raw, dt);
-    // 发光视觉反馈
-    const svg = raw.el.firstElementChild as SVGSVGElement | null;
-    if (!svg) return;
-    const glow = raw.emitTimer;
-    svg.style.filter = glow > 0.05 ? `brightness(${(1 + glow * 0.45).toFixed(2)}) drop-shadow(0 0 ${(3 + glow * 8).toFixed(1)}px rgba(255,215,105,${(0.28 + glow * 0.58).toFixed(2)}))` : '';
+  glow: number;
+  svg: SVGSVGElement;
+  readonly glowColor = [255, 215, 105]
+  constructor(gx: number, gy: number) {
+    super(gx, gy);
+    this.glow = 0;
+    this.svg = this.el.firstElementChild as SVGSVGElement
   }
-  static onRelease(raw: Bell): void { raw.snapToGrid(); }
+  onTick(dt: number): void {
+    super.onTick(dt);
+    if (this.emitTimer > 0) {
+      this.glow = this.glow + (this.emitTimer - this.glow) * Math.min(dt * 8, 1);
+      const glow = this.glow
+      const [r, g, b] = this.glowColor;
+      const br = (1 + glow * 0.45).toFixed(2);
+      const bl = (3 + glow * 8).toFixed(1);
+      const a = (0.28 + glow * 0.58).toFixed(2);
+      this.svg.style.filter = `brightness(${br}) drop-shadow(0 0 ${bl}px rgba(${r},${g},${b},${a}))`;
+    } else { this.svg.style.filter = ''; }
+  }
+  get isStable(): boolean { return true; }
+  stepPhysics(): void { }
 }

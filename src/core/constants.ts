@@ -21,9 +21,7 @@ export const WAVE_REMOVE_ALPHA = 0.01;
 export const EMIT_SLOW = 1;
 export const EMIT_FAST = 0.05;
 
-// 音叉共振
-export const RES_RANGE = GRID * 8;
-export const RES_DETUNE = 0.035;
+
 
 // 频率档位表：等比十档 + 两端兜底
 export const FREQ_TABLE = [13.75, 27.5, 55, 110, 220, 440, 880, 1760, 3520, 7040] as const;

@@ -1,10 +1,9 @@
 // tools/Car.ts
 import { CAR_SPEED_MAX } from '../core/constants';
-import { setFreq } from '../core/frequency';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
 import { state } from '../state';
-import { SoundEmitter, appendToneControls } from './Bell';
+import { setFreq, SoundEmitter, appendToneControls } from './Bell';
 import { button, createContextMenu, menuBody, rowLabel } from '../ui/menu';
 import { placeMenu, refreshMenu } from '../ui/menu-controller';
 

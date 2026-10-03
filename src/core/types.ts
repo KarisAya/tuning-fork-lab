@@ -2,7 +2,6 @@
 
 export type Point = [number, number];
 export type Segment = [number, number, number, number];
-export type WaveMode = 'click' | 'continuous';
 export type BoardDirection = 'v' | 'h';
 
 export interface SerializedItem {
@@ -15,13 +14,9 @@ export interface SerializedItem {
 /** 可调频发声工具的公共部分（频率 + 档位）。 */
 export interface TunedSource {
   freq: number;
+  intv: number;
   level: number;
-}
-
-/** 能发射声波的工具能力：有发射点、有频率。 */
-export interface Emitter {
   getEmissionPoint(): Point;
-  freq: number;
 }
 
 /** 菜单/管理用的最小可删除能力。 */

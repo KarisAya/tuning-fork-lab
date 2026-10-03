@@ -10,7 +10,7 @@ export function openMenu(clientX: number, clientY: number, item: Tool): void {
   openItem = item;
   openAt = { x: clientX, y: clientY };
   menuEl.innerHTML = '';
-  menuEl.appendChild((item.constructor as typeof Tool).onContextMenu(item));
+  menuEl.appendChild((item.constructor as typeof Tool).contextMenu(item));
   menuEl.classList.add('open');
   menuEl.setAttribute('aria-hidden', 'false');
   placeMenu();

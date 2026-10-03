@@ -1,37 +1,28 @@
 // 右键菜单的通用零件：标题、按钮、行、滑杆、删除项。
 // 这里不认识任何具体工具，只提供 DOM 拼装。
-
-import type { Removable } from '../core/types';
+import type { Tool } from '../tools/Tool';
 import { removeItem } from '../tools/manager';
 import { closeMenu } from './menu-controller';
 
-export function menuTitle(text: string): HTMLElement {
-  const el = document.createElement('div');
-  el.className = 'menu-title';
-  el.textContent = text;
-  return el;
-}
-
-export function delButton(item: Removable): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.className = 'menu-danger';
-  button.type = 'button';
-  button.textContent = '删除该工具';
-  button.addEventListener('click', () => {
+export function createContextMenu(item: Tool, title: string) {
+  const menu = document.createElement('div');
+  const titleEl = document.createElement('div');
+  titleEl.className = 'menu-title';
+  titleEl.textContent = title;
+  menu.appendChild(titleEl);
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'menu-body';
+  menu.appendChild(bodyEl);
+  const delButtonEl = document.createElement('button');
+  delButtonEl.className = 'menu-danger';
+  delButtonEl.type = 'button';
+  delButtonEl.textContent = '删除该工具';
+  delButtonEl.addEventListener('click', () => {
     removeItem(item);
     closeMenu();
   });
-  return button;
-}
-
-export function createContextMenu(item: Removable, title: string): HTMLDivElement {
-  const root = document.createElement('div');
-  root.appendChild(menuTitle(title));
-  const body = document.createElement('div');
-  body.className = 'menu-body';
-  root.appendChild(body);
-  root.appendChild(delButton(item));
-  return root;
+  menu.appendChild(delButtonEl);
+  return [menu, bodyEl];
 }
 
 export function menuBody(root: HTMLElement): HTMLElement {

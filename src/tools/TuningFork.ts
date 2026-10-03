@@ -1,11 +1,13 @@
 // tools/TuningFork.ts
-import { RES_DETUNE, RES_RANGE } from '../core/constants';
-import { setFreq, waveInterval } from '../core/frequency';
-import type { SerializedItem } from '../core/types';
+import { GRID, WAVE_SPEED } from '../core/constants';
 import { state } from '../state';
-import { SoundEmitter } from './Bell';
+import { Bell } from './Bell';
+import { pushWave, makeWave } from '../sim/waves';
+// 音叉共振
+const RES_RANGE = GRID * 8;
+const RES_DETUNE = 0.035;
 
-export class TuningFork extends SoundEmitter {
+export class TuningFork extends Bell {
   static label = '音叉';
   static icon = '<i class="fa-solid fa-music"></i>';
   static size: readonly [number, number] = [3, 5];
@@ -37,90 +39,55 @@ export class TuningFork extends SoundEmitter {
       <path class="hit-hint" d="M7 8h58v109H7z"/>
     </svg>`;
 
-  resonance = 0;
-  resTimer = 0;
+  readonly glowColor = [255, 175, 255]
+  tines: SVGPathElement
+  timers: Array<(dt: number) => boolean>;
 
   constructor(gx: number, gy: number) {
     super(gx, gy);
-    this.grounded = false;
+    this.timers = [];
+    this.tines = this.svg.querySelector('.fork-tines') as SVGPathElement;
+  }
+  resonance(other: TuningFork): void {
+    const ratio = other.freq > this.freq ? other.freq / this.freq : this.freq / other.freq;
+    if (Math.abs(ratio - Math.round(ratio)) > RES_DETUNE) { return; }
+    const dx = other.px - this.px
+    const dy = other.py - this.py
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > RES_RANGE) { return; }
+    let t = d / WAVE_SPEED;
+    // t 秒后执行
+    this.timers.push((dt: number) => {
+      t -= dt;
+      if (t > 0) { return false; }
+      if (other.removed) { return true; }
+      if (other.emitTimer > 0) { return true; }
+      other.emitTimer = 1;
+      const source = other.emissionPoint
+      const wave = makeWave(source[0], source[1], other.freq)
+      wave.travelDistance = d
+      wave.skipTag = true
+      pushWave(wave);
+      return true;
+    });
   }
 
-  static onMove(raw: TuningFork, dt: number): void {
-    super.onMove(raw, dt);
-    // 邻近同频音叉共振
-    let drive = 0;
-    if (raw.vib < 0.95) {
-      for (const other of state.items) {
-        if (other === raw || other.removed || !(other instanceof TuningFork)) {
-          continue;
-        }
-        if (other.vib < 0.3) continue;
-        if (Math.abs(other.freq - raw.freq) / raw.freq > RES_DETUNE) {
-          continue;
-        }
-        const dx = other.px + other.w / 2 - (raw.px + raw.w / 2);
-        const dy = other.py + other.h / 2 - (raw.py + raw.h / 2);
-        const d = Math.hypot(dx, dy);
-        if (d <= RES_RANGE) {
-          drive = Math.max(drive, other.vib * (1 - d / RES_RANGE));
-        }
-      }
-    }
-    raw.resonance = Math.max(raw.resonance - dt * 0.9, drive);
-    // 共振发波
-    if (raw.mode !== 'continuous' && raw.resonance > 0.45) {
-      raw.resTimer -= dt;
-      if (raw.resTimer <= 0) {
-        raw.resTimer = waveInterval(raw.freq) * 1.8;
-        emitWave(raw);
-        raw.vib = Math.max(raw.vib, 0.75);
-      }
-    } else if (raw.resonance <= 0.15) {
-      raw.resTimer = 0;
-    }
-    // 视觉反馈：叉臂摆动 + 发光
-    const glow = Math.max(raw.vib, raw.resonance);
-    const svg = raw.el.firstElementChild as SVGSVGElement | null;
-    const tines = svg?.querySelector('.fork-tines') as SVGPathElement | null;
-    if (tines) {
-      const sway = Math.sin(performance.now() * 0.05 * Math.max(1, raw.freq / 100)) * glow * 1.6;
-      tines.setAttribute('transform', `rotate(${sway.toFixed(2)} 36 72)`);
-    }
-    if (svg) {
-      if (glow > 0.06) {
-        const rgb = raw.resonance > 0.45 ? '255,175,255' : '150,225,255';
-        svg.style.filter = `brightness(${(1 + glow * 0.42).toFixed(2)}) drop-shadow(0 0 ${(3 + glow * 9).toFixed(1)}px rgba(${rgb},${(0.35 + glow * 0.55).toFixed(2)}))`;
-      } else {
-        svg.style.filter = '';
-      }
+  emitOnce(): void {
+    super.emitOnce();
+    for (const other of state.items) {
+      if (other.removed) { continue; }
+      if (other === this) { continue; }
+      if (!(other instanceof TuningFork)) { continue; }
+      this.resonance(other)
     }
   }
 
-  static onClick(raw: TuningFork): void {
-    if (raw.mode !== 'click') return;
-    emitWave(raw);
-    raw.vib = 1;
-  }
-
-  static onContextMenu(item: TuningFork): HTMLElement {
-    return buildToneMenu(item, TuningFork.label);
-  }
-
-  serialize(): SerializedItem {
-    return {
-      ...super.serialize(),
-      freq: this.freq,
-      mode: this.mode,
-    };
-  }
-
-  deserialize(data: SerializedItem): void {
-    super.deserialize(data);
-    if (typeof data.freq === 'number') {
-      setFreq(this, data.freq);
-    }
-    if (data.mode === 'continuous' || data.mode === 'click') {
-      this.mode = data.mode;
+  onTick(dt: number): void {
+    super.onTick(dt);
+    this.timers = this.timers.filter(fn => !fn(dt));
+    if (this.emitTimer > 0) {
+      const sway = Math.sin(performance.now() / this.intv) * this.glow * 1.6;
+      this.tines.setAttribute('transform', `rotate(${sway.toFixed(2)} 36 72)`);
     }
   }
 }

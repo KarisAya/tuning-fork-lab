@@ -15,7 +15,7 @@ import {
   reflectPointAcrossLine,
 } from '../core/geometry';
 import { clamp } from '../core/math';
-import type { Emitter, Occluder, Point, Segment, Wave } from '../core/types';
+import type { Occluder, Point, Segment, Wave } from '../core/types';
 import { state } from '../state';
 import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';

@@ -7,6 +7,7 @@ import { Bell } from './Bell';
 // import { Car } from './Car';
 // import { BouncyBall } from './BouncyBall';
 
+
 export type ToolClass = typeof Tool;
 
 export const TOOL_REGISTRY: ToolClass[] = [];
