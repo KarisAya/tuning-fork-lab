@@ -17,8 +17,8 @@ import { getIncidentSource, getWavePathToPoint } from './optics';
 
 /** 2D 圆柱波近似：1/sqrt(r)。 */
 export function waveAlphaAt(radius: number): number {
-  const rGrid = Math.max(1, radius / GRID);
-  return clamp(1 / Math.sqrt(rGrid), 0, 1);
+  if (radius < 1) { return 0; }
+  return 1 / Math.sqrt(radius / GRID)
 }
 export function renderWaveAlpha(wave: Wave): number {
   const alpha = waveAlphaAt(wave.r) * wave.fadeOut;
@@ -97,7 +97,7 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
     if (!o.reflect) { continue; }
     if (wave.emittedReflections.has(k)) { continue; }
     if (wave.diffraction?.board.key === k) { continue; }
-    if (wave.r * wave.r < distanceSquarePointSegment(wave.position, o.seg) - 1e-3) { continue; }
+    // if (wave.r * wave.r < distanceSquarePointSegment(wave.position, o.seg) - 1e-3) { continue; }
     const hits = circleSegmentIntersections(wave.position, wave.r, o.seg);
     for (const hit of hits) {
       const path = getWavePathToPoint(wave, hit, k);

@@ -2,7 +2,7 @@
 
 import { GRID } from '../core/constants';
 import { clamp } from '../core/math';
-import type { UniSeg, SerializedItem } from '../core/types';
+import type { Segment, UniSeg, SerializedItem } from '../core/types';
 import { state } from '../state';
 import { Tool } from './Tool';
 import { button, createContextMenu, rangeControl, rowLabel } from '../ui/menu';
@@ -34,9 +34,11 @@ export class EchoBoard extends Tool {
     if (this.dragging) { return null; }
     const key = `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`;
     const y = this.py + this.gh * GRID;
-    const seg = (this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]])
+    const seg = (this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]]) as Segment;
     return [key, seg, this.reflect] as UniSeg
   }
+
+  occluderKey(): string { return `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`; }
 
   applyGeom(): void {
     const isH = this.dir === 'h';

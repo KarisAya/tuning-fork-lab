@@ -34,26 +34,25 @@ export function segmentBlockedByBoards(start: Point, end: Point, ignore: Set<str
  */
 const EMPTY_IGNORE: Set<string> = new Set();
 export function getWavePathToPoint(wave: Wave, target: Point, finalIgnore?: string): Point[] | null {
+  const source = wave.source;
   if (wave.reflections.length === 0) {
-    const source = wave.source;
     let ignore;
     if (finalIgnore) { ignore = new Set<string>(); ignore.add(finalIgnore); }
     else { ignore = EMPTY_IGNORE; }
     if (segmentBlockedByBoards(source, target, ignore)) { return null; }
     return [source, target];
   }
-  const [sourceX, sourceY] = wave.source;
+  const [sourceX, sourceY] = source;
   const [targetX, targetY] = target;
   const dx = targetX - sourceX;
   const dy = targetY - sourceY;
   const virtualDistSq = dx * dx + dy * dy;
   if (virtualDistSq + 1e-3 < wave.birthR * wave.birthR) { return null; }
-  let currentSource: Point = [...wave.position];
-  let currentTarget: Point = [...target];
+  let currentSource: Point = wave.position
+  let currentTarget: Point = target
   const reverseBounces: Point[] = [];
   for (let i = wave.reflections.length - 1; i >= 0; i -= 1) {
     const board = wave.reflections[i].occ
-    if (!board) return null;
     const dx = currentTarget[0] - currentSource[0];
     const dy = currentTarget[1] - currentSource[1];
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -65,7 +64,6 @@ export function getWavePathToPoint(wave: Wave, target: Point, finalIgnore?: stri
     currentTarget = reflectPointAcrossLine(currentTarget, board.seg);
   }
   const bounces = reverseBounces.reverse();
-  const source: Point = [sourceX, sourceY];
   const path: Point[] = [source, ...bounces, target];
   for (let i = 0; i < path.length - 1; i += 1) {
     const ignore = new Set<string>();
@@ -78,6 +76,68 @@ export function getWavePathToPoint(wave: Wave, target: Point, finalIgnore?: stri
   return path;
 }
 
+// export function getWavePathToPoint(
+//   wave: Wave,
+//   target: Point,
+//   finalIgnore?: WaveObstacle,
+// ): Point[] | null {
+//   const virtualDistance = Math.hypot(target[0] - wave.x, target[1] - wave.y);
+//   if (wave.reflections.length > 0 && virtualDistance + 1e-3 < wave.birthR) {
+//     return null;
+//   }
+//   if (wave.reflections.length === 0) {
+//     const source: Point = [wave.sourceX, wave.sourceY];
+//     const ignore = new Set<WaveObstacle>();
+//     if (finalIgnore) ignore.add(finalIgnore);
+//     if (segmentBlockedByBoards(source, target, ignore)) {
+//       return null;
+//     }
+//     return [source, target];
+//   }
+//   let currentSource: Point = [wave.x, wave.y];
+//   let currentTarget: Point = [target[0], target[1]];
+//   const reverseBounces: Point[] = [];
+//   for (let i = wave.reflections.length - 1; i >= 0; i -= 1) {
+//     const hop = wave.reflections[i];
+//     const board = getOccluder(hop.item);
+//     if (!board) return null;
+//     const dx = currentTarget[0] - currentSource[0];
+//     const dy = currentTarget[1] - currentSource[1];
+//     const distance = Math.hypot(dx, dy);
+//     if (distance < 1e-6) return null;
+//     const hit = rayHitSegment(
+//       currentSource[0], currentSource[1], dx / distance, dy / distance, ...board.seg,
+//     );
+//     if (!hit || hit.t > distance + 1e-3) {
+//       return null;
+//     }
+//     reverseBounces.push([hit.x, hit.y]);
+//     currentSource = reflectPointAcrossLine(currentSource[0], currentSource[1], board.seg);
+//     currentTarget = reflectPointAcrossLine(currentTarget[0], currentTarget[1], board.seg);
+//   }
+//   const bounces = reverseBounces.reverse();
+//   const source: Point = [wave.sourceX, wave.sourceY];
+//   const path: Point[] = [source, ...bounces, target];
+//   for (let i = 0; i < path.length - 1; i += 1) {
+//     const ignore = new Set<WaveObstacle>();
+//     if (i === 0) {
+//       ignore.add(wave.reflections[0].item);
+//     }
+//     if (i > 0 && i - 1 < wave.reflections.length) {
+//       ignore.add(wave.reflections[i - 1].item);
+//     }
+//     if (i < wave.reflections.length) {
+//       ignore.add(wave.reflections[i].item);
+//     }
+//     if (i === path.length - 2 && finalIgnore) {
+//       ignore.add(finalIgnore);
+//     }
+//     if (segmentBlockedByBoards(path[i], path[i + 1], ignore)) {
+//       return null;
+//     }
+//   }
+//   return path;
+// }
 
 
 /**
@@ -140,7 +200,7 @@ export function getIncidentSource(wave: Wave, path: Point[]): Point {
     const p = path[path.length - 2];
     return [p[0], p[1]];
   }
-  return [...wave.source];
+  return wave.source;
 }
 
 /**
@@ -171,11 +231,10 @@ export function buildOccluderCache(wave: Wave): OccluderCache[] {
   const cache: OccluderCache[] = [];
   const reach = wave.r + SHADOW_SOFTNESS;
   const reachSq = reach * reach;
-
+  const [x, y] = wave.position;
   for (const o of state.occluders.values()) {
     // 衍射波的母板只负责定义边缘，不作为自己的遮挡体。
     if (wave.diffraction?.board === o) continue;
-    const [x, y] = wave.position;
     const [[x0, y0], [x1, y1]] = o.seg;
     // 径向剪枝
     const dMinSq = distanceSquarePointSegment(wave.position, o.seg);

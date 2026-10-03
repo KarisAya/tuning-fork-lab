@@ -188,11 +188,9 @@ function strokeArcRuns(
  */
 function drawDirectWave(wave: Wave, baseAlpha: number): void {
   if (wave.r <= 0.5) return;
-
   const samples = sampleCountForRadius(wave.r, RENDER_SAMPLES);
   const hue = wave.hue.toFixed(1);
   const stepAngle = TAU / samples;
-
   const cache = buildOccluderCache(wave);
   const runs: ArcRun[] = [];
   let runStart = -1;

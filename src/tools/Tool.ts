@@ -49,8 +49,6 @@ export abstract class Tool {
   protected onRelease(moved: boolean): void {
     this.dragging = false;
     this.el.classList.remove('dragging');
-    this.vx = 0;
-    this.vy = 0;
     if (!moved) { this.onClick(); }
     else if (!(this.constructor as typeof Tool).physics) { this.onStable(); }
     this.render();
@@ -108,7 +106,7 @@ export abstract class Tool {
         } else {
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY
-          moved = (dx * dx + dy * dy) < 16
+          moved = (dx * dx + dy * dy) > 16
         }
       };
       const onPointerUp = (_ev: PointerEvent): void => {
