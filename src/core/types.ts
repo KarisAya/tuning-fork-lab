@@ -2,7 +2,7 @@
 
 export type Point = [number, number];
 export type Segment = [number, number, number, number];
-export type BoardDirection = 'v' | 'h';
+
 
 export interface SerializedItem {
   type: string;

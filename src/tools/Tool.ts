@@ -213,21 +213,26 @@ export abstract class Tool {
     };
   }
 
-  deserialize(data: SerializedItem): void {
-    const x = Math.round(typeof data.x === 'number' ? data.x : 0);
-    const y = Math.round(typeof data.y === 'number' ? data.y : 0);
+  keepInsideDesk(): void {
     const maxX = Math.max(0, state.deskW - this.w);
     const maxY = Math.max(0, state.deskH - this.h);
-    this.px = clamp(x * GRID, 0, maxX);
-    this.py = clamp(y * GRID, 0, maxY);
+    this.px = clamp(this.px, 0, maxX);
+    this.py = clamp(this.py, 0, maxY);
     this.x = Math.round(this.px / GRID);
     this.y = Math.round(this.py / GRID);
+  }
+
+  deserialize(data: SerializedItem): void {
+    this.x = Math.round(typeof data.x === 'number' ? data.x : 0);
+    this.y = Math.round(typeof data.y === 'number' ? data.y : 0);
+    this.px = this.x * GRID;
+    this.py = this.y * GRID;
     this.vx = 0;
     this.vy = 0;
     this.grounded = false;
+    this.keepInsideDesk();
     this.render();
   }
-
   remove(): void {
     this.removed = true;
     this.el.remove();
