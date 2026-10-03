@@ -94,7 +94,7 @@ export function diffractionPositionFactor(
   source: Point,
   rr: number,
 ): number {
-  const edge = o.ends[edgeIndex];
+  const edge = o.seg[edgeIndex];
   const inX = source[0] - edge[0];
   const inY = source[1] - edge[1];
   const inLen = Math.sqrt(inX * inX + inY * inY) || 1;
@@ -140,7 +140,7 @@ export function getIncidentSource(wave: Wave, path: Point[]): Point {
     const p = path[path.length - 2];
     return [p[0], p[1]];
   }
-  return [wave.sourceX, wave.sourceY];
+  return [...wave.source];
 }
 
 /**
@@ -157,8 +157,7 @@ function normAngle(a: number): number {
 }
 
 interface OccluderCache {
-  item: unknown;
-  x0: number; y0: number; x1: number; y1: number;
+  o: Occluder;
   a0: number;    // 角弧起点，[0, TAU)
   span: number;  // 逆时针覆盖弧长，落在 (0, PI]
 }
@@ -173,19 +172,17 @@ export function buildOccluderCache(wave: Wave): OccluderCache[] {
   const reach = wave.r + SHADOW_SOFTNESS;
   const reachSq = reach * reach;
 
-  for (const o of state.occluders) {
+  for (const o of state.occluders.values()) {
     // 衍射波的母板只负责定义边缘，不作为自己的遮挡体。
-    if (wave.diffraction?.board === o.item) continue;
-
-    const [x0, y0, x1, y1] = o.seg;
-
+    if (wave.diffraction?.board === o) continue;
+    const [x, y] = wave.position;
+    const [[x0, y0], [x1, y1]] = o.seg;
     // 径向剪枝
-    const dMinSq = pointSegDistSq(wave.x, wave.y, x0, y0, x1, y1);
+    const dMinSq = distanceSquarePointSegment(wave.position, o.seg);
     if (dMinSq >= reachSq) continue;
-
     // 角弧剪枝：取两端点视向角之间的"短弧"
-    let a0 = normAngle(Math.atan2(y0 - wave.y, x0 - wave.x));
-    const a1 = normAngle(Math.atan2(y1 - wave.y, x1 - wave.x));
+    let a0 = normAngle(Math.atan2(y0 - y, x0 - x));
+    const a1 = normAngle(Math.atan2(y1 - y, x1 - x));
     let span = a1 - a0;
     if (span < 0) span += TAU;
     if (span > Math.PI) {
@@ -193,8 +190,7 @@ export function buildOccluderCache(wave: Wave): OccluderCache[] {
       a0 = a1;
       span = TAU - span;
     }
-
-    cache.push({ item: o.item, x0, y0, x1, y1, a0, span });
+    cache.push({ o, a0, span });
   }
   return cache;
 }
@@ -205,23 +201,14 @@ export function buildOccluderCache(wave: Wave): OccluderCache[] {
  *
  * angle 必须与 ux/uy 对应，并且落在 [0, TAU)（采样循环里的 (i+0.5)*stepAngle 天然满足）。
  */
-export function directVisibility(
-  wave: Wave,
-  ux: number,
-  uy: number,
-  angle: number,
-  cache: OccluderCache[],
-): number {
+export function directVisibility(wave: Wave, ux: number, uy: number, angle: number, cache: OccluderCache[]): number {
   let visibility = 1;
-
-  for (let i = 0; i < cache.length; i += 1) {
-    const c = cache[i];
-    // 角区间剪枝：射线方向不在该板张成的角弧内，必定不命中
-    let da = angle - c.a0;
+  for (const { o, a0, span } of cache) {
+    let da = angle - a0;
     da %= TAU;
     if (da < 0) da += TAU;
-    if (da > c.span) continue;
-    const hit = rayHitSegment(wave.x, wave.y, ux, uy, c.x0, c.y0, c.x1, c.y1);
+    if (da > span) continue;
+    const hit = rayHitSegment(wave.position, ux, uy, o.seg);
     if (!hit) continue;
     const delta = hit.t - wave.r;
     if (delta >= SHADOW_SOFTNESS) continue;         // 板还没被波前触及

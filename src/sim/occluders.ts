@@ -2,11 +2,12 @@
 
 import { GRID } from '../core/constants';
 import type { Point, Segment, Occluder } from '../core/types';
+import { distanceSquarePointSegment } from '../core/math';
 import { state } from '../state';
 
 export const HALF_GRID_SQ = GRID * GRID / 4;
 export function isPointOnSegment(p: Point, seg: Segment) {
-  return dSqPointSeg(p, seg) > HALF_GRID_SQ
+  return distanceSquarePointSegment(p, seg) > HALF_GRID_SQ
 }
 
 export function collectOccluders(): void {
@@ -21,7 +22,7 @@ export function collectOccluders(): void {
     }
   }
   for (let i = 0; i < next.length; i++) {
-    for (let j = i + 1; j < next.length; j++) {
+    for (let j = 0; j < next.length; j++) {
       if (i === j) { continue; }
       const occluder = next[i];
       const other = next[j];

@@ -12,7 +12,7 @@ import { freqHue } from '../core/frequency';
 import { clamp, distanceSquarePointSegment, circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
 import type { Point, Segment, Occluder, Wave } from '../core/types';
 import { state } from '../state';
-import { collectOccluders, isPointOnSegment } from './occluders';
+import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
 
 /** 2D 圆柱波近似：1/sqrt(r)。 */
@@ -27,12 +27,12 @@ export function renderWaveAlpha(wave: Wave): number {
 
 export function makeWave(source: Point, freq: number, radius = 0, travelDistance = 0,): Wave {
   return {
-    position: source,
+    position: [...source],
     r: radius,
     hue: freqHue(freq),
     freq,
     travelDistance,
-    source: source,
+    source: [...source],
     reflections: [],
     birthR: 0,
     diffraction: null,
@@ -62,7 +62,7 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
   const position = reflectPointAcrossLine(parent.position, o.seg);
   const next = makeWave(position, parent.freq, parent.r, nextTravelDistance);
   next.hue = parent.hue;
-  next.source = parent.source;
+  next.source = [...parent.source];
   next.reflections = [
     ...parent.reflections,
     { occ: o, seg: [...o.seg] as Segment, bounce: [bounce[0], bounce[1]] },
@@ -74,31 +74,15 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
 }
 
 /** 由一条边生成衍射子波：以边缘为新的点源。 */
-function createDiffractionWave(
-  parent: Wave,
-  o: Occluder,
-  edgeIndex: number,
-  incidentSource: Point,
-): Wave | null {
-  const edge = o.ends[edgeIndex];
-  const source: Point = [parent.x, parent.y];
-  const sideSign = (source[0] - o.seg[0]) * o.nx + (source[1] - o.seg[1]) * o.ny;
-  if (Math.abs(sideSign) < 0.5) {
-    return null;
-  }
+function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, incidentSource: Point,): Wave | null {
+  const edge = o.seg[edgeIndex];
   const nextTravelDistance = parent.travelDistance + parent.r;
-  const next = makeWave(edge[0], edge[1], parent.freq, 0, nextTravelDistance);
+  const next = makeWave(edge, parent.freq, 0, nextTravelDistance);
   next.hue = parent.hue;
-  next.sourceX = edge[0];
-  next.sourceY = edge[1];
+  next.source = [...edge]
   next.reflections = [];
   next.birthR = 0;
-  next.diffraction = {
-    board: o.item,
-    edgeIndex,
-    edge: [edge[0], edge[1]],
-    incidentSource: [incidentSource[0], incidentSource[1]],
-  };
+  next.diffraction = { board: o, edgeIndex, edge: [edge[0], edge[1]], incidentSource: [incidentSource[0], incidentSource[1]] };
   next.diffractionDepth = parent.diffractionDepth + 1;
   return next;
 }
