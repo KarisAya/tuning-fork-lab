@@ -4,26 +4,15 @@
 import type { Occluder, Wave } from './core/types';
 import type { Tool } from './tools/Tool';
 
-export interface LabState {
-  deskW: number;
-  deskH: number;
-  dpr: number;
-  waveSpeed: number;
-  samples: number;
-  paused: boolean;
-  items: Tool[];
-  waves: Wave[];
-  occluders: Map<string, Occluder>;
-}
 
-export const state: LabState = {
+export const state = {
   deskW: 0,
   deskH: 0,
   dpr: 1,
   waveSpeed: 0,
   samples: 0,
   paused: false,
-  items: [],
-  waves: [],
+  items: new Array<Tool>(),
+  waves: new Array<Wave>(),
   occluders: new Map<string, Occluder>(),
 };

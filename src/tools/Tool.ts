@@ -46,11 +46,10 @@ export abstract class Tool {
 
   protected onClick(): void { }
 
-  protected onRelease(moved: boolean): void {
+  protected onRelease(): void {
     this.dragging = false;
     this.el.classList.remove('dragging');
-    if (!moved) { this.onClick(); }
-    else if (!(this.constructor as typeof Tool).physics) { this.onStable(); }
+    if (!(this.constructor as typeof Tool).physics) { this.onStable(); }
     this.render();
   }
 
@@ -112,7 +111,8 @@ export abstract class Tool {
       const onPointerUp = (_ev: PointerEvent): void => {
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
-        this.onRelease(moved);
+        if (moved) { this.onRelease(); state.occluders.clear(); }
+        else { this.onClick(); }
       };
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);

@@ -11,8 +11,8 @@ export function isPointOnSegment(p: Point, seg: Segment) {
 }
 
 export function collectOccluders(): void {
-  // 1. 收集当前有效的遮挡体
-  state.occluders.clear();
+  if (state.occluders.size !== 0) { return; }
+  console.log('Collecting occluders...');
   const seglist: UniSeg[] = [];
   for (const item of state.items) {
     const occluder = item.occluder;
