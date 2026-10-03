@@ -37,9 +37,6 @@ export class EchoBoard extends Tool {
     const seg = (this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]]) as Segment;
     return [key, seg, this.reflect] as UniSeg
   }
-
-  occluderKey(): string { return `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`; }
-
   applyGeom(): void {
     const isH = this.dir === 'h';
     if (isH) {
@@ -75,6 +72,7 @@ export class EchoBoard extends Tool {
   <rect x="${x + 1}" y="${y + 1}" width="${Math.max(1, width - 2)}" height="${Math.max(1, height - 2)}" rx="2.5" fill="url(#board-metal)" filter="url(#board-glow)"/>
 </svg>`;
     if (state.deskW) { this.render(); }
+    state.occluders.clear()
   }
   static contextMenu(item: EchoBoard): HTMLElement {
     const [root, body] = createContextMenu(item, this.label);

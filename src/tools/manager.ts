@@ -30,4 +30,5 @@ export function removeItem(item: Tool): void {
     state.items.splice(index, 1);
   }
   item.remove();
+  state.occluders.clear()
 }
