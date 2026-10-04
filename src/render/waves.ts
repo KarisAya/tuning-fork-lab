@@ -465,3 +465,4 @@ export function renderWaves(): void {
     drawDiffractionWave(wave, alpha);
   }
 }
+

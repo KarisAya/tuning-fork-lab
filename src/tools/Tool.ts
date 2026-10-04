@@ -112,7 +112,7 @@ export abstract class Tool {
       const onPointerUp = (_ev: PointerEvent): void => {
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
-        if (moved) { this.onRelease(); state.occluders.clear(); }
+        if (moved) { this.onRelease(); state.occStale = true; }
         else { this.onClick(); }
       };
       window.addEventListener('pointermove', onPointerMove);

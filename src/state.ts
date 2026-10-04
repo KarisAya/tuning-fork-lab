@@ -15,4 +15,5 @@ export const state = {
   items: new Array<Tool>(),
   waves: new Array<Wave>(),
   occluders: new Map<string, Occluder>(),
+  occStale: true,
 };

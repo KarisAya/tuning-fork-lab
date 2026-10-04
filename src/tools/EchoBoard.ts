@@ -73,7 +73,7 @@ export class EchoBoard extends Tool {
   <rect x="${x + 1}" y="${y + 1}" width="${Math.max(1, width - 2)}" height="${Math.max(1, height - 2)}" rx="2.5" fill="url(#board-metal)" filter="url(#board-glow)"/>
 </svg>`;
     if (state.deskW) { this.render(); }
-    state.occluders.clear()
+    state.occStale = true;
   }
   static contextMenu(item: EchoBoard): HTMLElement {
     const [root, body] = createContextMenu(item, this.label);
@@ -104,12 +104,13 @@ export class EchoBoard extends Tool {
     reflectRow.append(
       button('开启反射', () => {
         item.reflect = true;
-        state.occluders.clear()
+        state.occStale = true;
         refreshMenu(item);
       }, item.reflect),
       button('关闭反射', () => {
         item.reflect = false;
         refreshMenu(item);
+        state.occStale = true;
       }, !item.reflect),
     );
     body.appendChild(reflectRow);

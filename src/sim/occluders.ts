@@ -12,6 +12,8 @@ export function isPointOnSegment(p: Point, seg: Segment) {
 
 export function collectOccluders(): void {
   console.log('Collecting occluders...');
+  state.occluders.clear();
+  state.occStale = false;
   const olist: [UniSeg, number, number][] = [];
   for (const item of state.items) {
     const occluder = item.occluder;
@@ -23,6 +25,7 @@ export function collectOccluders(): void {
     if (len < 1e-6) { continue; }
     olist.push([occluder, -dy / len, dx / len]);
   }
+  if (olist.length === 0) { return; }
   for (let i = 0; i < olist.length; i++) {
     const [[key, seg, reflect], nx, ny] = olist[i];
     const diffraction = [true, true] as [boolean, boolean];

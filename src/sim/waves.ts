@@ -2,7 +2,6 @@
 
 import {
   GRID,
-  MIN_WAVE_EFFECTIVE_ALPHA,
   WAVE_FADE_DURATION,
   WAVE_COUNT_THROTTLE_START,
   WAVE_COUNT_THROTTLE_STRICT,
@@ -14,7 +13,6 @@ import type { Point, Occluder, Wave, DiffractionInfo } from '../core/types';
 import { state } from '../state';
 import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
-
 /** 2D 圆柱波近似：1/sqrt(r)。 */
 export function waveAlphaAt(radius: number): number {
   if (radius < 1) { return 0; }
@@ -88,7 +86,7 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
   const next = makeSubWave(position, parent);
   next.r = parent.r;
   next.source = parent.source;
-  next.reflections.push(...parent.reflections, { occ: o, bounce: [bounce[0], bounce[1]] });
+  next.reflections.push(...parent.reflections, { occ: o, bounce: bounce });
   return next;
 }
 
@@ -220,13 +218,14 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
 
 export function updateWaves(dt: number): void {
   if (!state.waves.length) return;
-  if (state.occluders.size === 0) { collectOccluders(); }
+  if (state.occStale === 0) { collectOccluders(); }
   for (let i = state.waves.length - 1; i >= 0; i -= 1) {
     const wave = state.waves[i];
     wave.r += state.waveSpeed * dt;
     if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
       wave.fadeOut -= dt / WAVE_FADE_DURATION;
-      if (wave.fadeOut < MIN_WAVE_EFFECTIVE_ALPHA) {
+      if (wave.fadeOut < 0) {
+        console.log('wave removed', wave);
         state.waves.splice(i, 1);
       }
       continue;
