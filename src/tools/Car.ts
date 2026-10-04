@@ -1,5 +1,5 @@
 // tools/Car.ts
-import { GRAVITY } from '../core/constants';
+import { GRAVITY, RESTITUTION } from '../core/constants';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
 import { state, FixedQueue } from '../state';
@@ -60,20 +60,29 @@ export class Car extends Bell {
     super.applyGravity(dt);
     if (this.grounded) {
       if (this.running) {
-        const v = state.waveSpeed * this.speed;
-        const dv = v * dt
-        const vx = this.vx;
-        if (Math.abs(v - Math.abs(- vx)) < dv) { this.vx = v * this.running; }
+        const uSpeed = state.waveSpeed * this.speed;
+        const speed = this.running * uSpeed;
+        const dv = uSpeed * dt;
+        const diff = speed - this.vx;
+        if (Math.abs(diff) < dv) { this.vx = speed; }
         else {
-          if (this.running === 1) {
-            if (vx >= 0 && vx < v) { this.vx += dv; }
-            else { this.vx -= dv * 5 * Math.sign(vx); }
+          const factor = Math.sign(diff) === Math.sign(this.vx) ? 1 : 3.8;
+          this.vx += Math.sign(diff) * dv * factor;
+        }
+        if (this.px <= 0 || this.px + this.w >= state.deskW) {
+          if (this.px <= 0) {
+            this.px = 0;
+            this.running = 1;
           }
           else {
-            if (vx <= 0 && vx > -v) { this.vx -= dv; }
-            else { this.vx -= dv * 5 * Math.sign(vx) }
+            this.px = state.deskW - this.w;
+            this.running = -1
           }
+          const vx = -this.vx * RESTITUTION;
+          this.vx = Math.abs(vx) > uSpeed ? vx : -speed;
         }
+        this.px += this.vx * dt;
+        return;
       } else {
         const C = this.constructor as typeof Car;
         const friction = C.friction * dt;
@@ -82,9 +91,8 @@ export class Car extends Bell {
         else { this.vx = 0; }
       }
     }
-    this.px += this.vx * dt;
     super.applyRebound();
-
+    this.px += this.vx * dt;
   }
 
   onStable(): void { }
@@ -95,7 +103,8 @@ export class Car extends Bell {
   }
 
   onClick(): void {
-    if (!this.running) { super.onClick(); }
+    if (this.running) { this.running = 0; }
+    else { super.onClick(); }
   }
 
   onMove(px: number, py: number): void {

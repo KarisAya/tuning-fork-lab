@@ -33,13 +33,6 @@ export abstract class Tool {
 
   protected onTick(_dt: number): void { }
 
-  protected onDrag(): void {
-    this.dragging = true;
-    this.el.classList.add('dragging');
-    this.vx = 0;
-    this.vy = 0;
-  }
-
   protected onMove(px: number, py: number): void {
     this.px = clamp(px, 0, Math.max(0, state.deskW - this.w));
     this.py = clamp(py, 0, Math.max(0, state.deskH - this.h));
@@ -49,8 +42,6 @@ export abstract class Tool {
   protected onClick(): void { }
 
   protected onRelease(): void {
-    this.dragging = false;
-    this.el.classList.remove('dragging');
     if (!(this.constructor as typeof Tool).physics) { this.onStable(); }
     this.render();
   }
@@ -99,7 +90,10 @@ export abstract class Tool {
       const X = this.px;
       const Y = this.py;
       let moved = false;
-      this.onDrag();
+      this.dragging = true;
+      this.el.classList.add('dragging');
+      this.vx = 0;
+      this.vy = 0;
       const onPointerMove = (ev: PointerEvent): void => {
         const dx = ev.clientX - startX;
         const dy = startY - ev.clientY;
@@ -109,6 +103,8 @@ export abstract class Tool {
       const onPointerUp = (_ev: PointerEvent): void => {
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
+        this.dragging = false;
+        this.el.classList.remove('dragging');
         if (moved) { this.onRelease(); state.occStale = true; }
         else { this.onClick(); }
       };
