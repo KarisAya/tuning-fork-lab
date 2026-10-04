@@ -1,10 +1,5 @@
 // 波的绘制：直接波用软边可见度，二级波用几何路径采样。
-import {
-  RENDER_SAMPLES,
-  SECONDARY_RENDER_SAMPLES,
-  TAU,
-  WAVE_LW,
-} from '../core/constants';
+import { RENDER_SAMPLES, SECONDARY_RENDER_SAMPLES, TAU, WAVE_LW, MIN_WAVE_EFFECTIVE_ALPHA } from '../core/constants';
 import type { Point, Wave } from '../core/types';
 import {
   diffractionPositionFactor,
@@ -14,7 +9,7 @@ import {
   getWavePathToPoint,
   segmentBlockedByBoards,
 } from '../sim/optics';
-import { renderWaveAlpha, isInvalidDiffractionPoint } from '../sim/waves';
+import { renderWaveAlpha } from '../sim/waves';
 import { state } from '../state';
 import { waveCtx } from '../ui/dom';
 
@@ -158,7 +153,9 @@ function strokeArcRuns(
   }
 
   for (const [key, arcs] of buckets) {
+    if (arcs.length === 0) { continue; }
     const alpha = key * ALPHA_STEP;
+    if (alpha < MIN_WAVE_EFFECTIVE_ALPHA) { continue; }
     waveCtx.strokeStyle = getStrokeColor(hue, sat, light, alpha);
     waveCtx.beginPath();
     for (let i = 0; i < arcs.length; i += 1) {
@@ -218,7 +215,6 @@ function drawDirectWave(wave: Wave, baseAlpha: number): void {
       runAlpha = quantizedAlpha;
       continue;
     }
-
     // 只合并透明度接近的弧段。某个方向被隔音板遮挡时，
     // 不会把整个连续弧段压成同一个低透明度。
     if (Math.abs(quantizedAlpha - runAlpha) > ALPHA_STEP) {
@@ -406,10 +402,20 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     const p = [aX + cam * radius, aY + sam * radius] as Point;
     if (segmentBlockedByBoards(edge, p, ignore)) { flush(); continue; }
     const angleFactor = diffractionAngleFactor(edge, aeXu, aeYu, p);
-    flush();
-    runStart = a0;
-    runEnd = a1;
-    runAlpha = positionFactor * angleFactor;
+    const alpha = positionFactor * angleFactor;
+    const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
+    if (runStart < 0) {
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    } else if (Math.abs(quantizedAlpha - runAlpha) <= ALPHA_STEP) {
+      runEnd = a1;
+    } else {
+      flush();
+      runStart = a0;
+      runEnd = a1;
+      runAlpha = quantizedAlpha;
+    }
   }
   flush();
   strokeArcRuns(info.edge, radius, runs, hue, 90, 66);

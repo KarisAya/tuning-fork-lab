@@ -210,9 +210,6 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
       const incidentSource = getIncidentSource(wave, path);
       const child = createDiffractionWave(wave, o, i, incidentSource);
       if (!child) continue;
-      wave.emittedDiffractions.add(k);
-      wave.diffraction?.emittedReflections.add(k);
-      wave.diffractionInfo?.parent.emittedDiffractions.add(k);
       wave.emittedDiffractions.add(key);
       wave.diffraction?.emittedDiffractions.add(key);
       wave.diffractionInfo?.parent.emittedDiffractions.add(key);
