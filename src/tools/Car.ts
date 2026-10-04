@@ -1,19 +1,24 @@
 // tools/Car.ts
-import { CAR_SPEED_MAX } from '../core/constants';
+import { GRAVITY } from '../core/constants';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
-import { state } from '../state';
-import { setFreq, SoundEmitter, appendToneControls } from './Bell';
-import { button, createContextMenu, menuBody, rowLabel } from '../ui/menu';
+import { state, FixedQueue } from '../state';
+import { setFreq, Bell, appendToneControls } from './Bell';
+import { button, createContextMenu, rowLabel } from '../ui/menu';
 import { placeMenu, refreshMenu } from '../ui/menu-controller';
 
+// 小车
+const CAR_SPEED_MAX = 2;
+const MAX_THROW_SPEED = 3200;
+const FRICTION = 0.25 * GRAVITY;
 
-
-export class Car extends SoundEmitter {
+type RawV = [number, number, number]
+export class Car extends Bell {
   static label = '小车';
   static icon = '<i class="fa-solid fa-car-side"></i>';
   static size: readonly [number, number] = [3, 2];
-  static gravity = true;
+  static physics = true;
+  static friction = FRICTION;
   static shape = `
     <svg viewBox="0 0 72 48" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -50,59 +55,76 @@ export class Car extends SoundEmitter {
   running: -1 | 0 | 1 = 0;
   nextRunning: -1 | 0 | 1 = 1;
   speed = 1;
-  wheelPhase = 0;
-
-  static spawnY(maxGY: number): number { return maxGY; }
-
-  get hasSelfPropulsion(): boolean { return Boolean(this.running) }
-
-  update(dt: number): void {
-    if (this.running) {
-      if (!this.dragging) {
-        if (this.grounded) {
-          const support = this.supportY();
-          if (this.py < support - 1) { this.grounded = false; }
+  vRec = new FixedQueue<RawV>(8);
+  stepPhysics(dt: number): void {
+    super.applyGravity(dt);
+    if (this.grounded) {
+      if (this.running) {
+        const v = state.waveSpeed * this.speed;
+        const dv = v * dt
+        const vx = this.vx;
+        if (Math.abs(v - Math.abs(- vx)) < dv) { this.vx = v * this.running; }
+        else {
+          if (this.running === 1) {
+            if (vx >= 0 && vx < v) { this.vx += dv; }
+            else { this.vx -= dv * 5 * Math.sign(vx); }
+          }
           else {
-            const pxPerSecond = state.waveSpeed * this.speed;
-            this.vx = this.running * pxPerSecond;
-            this.px += this.vx * dt;
-            const maxX = Math.max(0, state.deskW - this.w);
-            if (this.px <= 0 || this.px >= maxX) {
-              this.px = clamp(this.px, 0, maxX);
-              this.running = 0;
-              this.emitTimer = 0;
-              this.vx = 0;
-              this.grounded = true;
-              this.snapToGrid();
-              refreshMenu(this)
-            }
-            Car.onMove(this, dt);
-            this.render();
-            return;
+            if (vx <= 0 && vx > -v) { this.vx -= dv; }
+            else { this.vx -= dv * 5 * Math.sign(vx) }
           }
         }
+      } else {
+        const C = this.constructor as typeof Car;
+        const friction = C.friction * dt;
+        if (this.vx > friction) { this.vx -= friction; }
+        else if (this.vx < -friction) { this.vx += friction; }
+        else { this.vx = 0; }
       }
     }
-    super.update(dt);
+    this.px += this.vx * dt;
+    super.applyRebound();
+
   }
 
-  static onMove(raw: Car, dt: number): void {
-    if (raw.running) {
-      raw.wheelPhase += Math.abs(raw.vx) * dt / 9.5;
-      raw.vib = Math.max(raw.vib, 0.9);
-      raw.tickEmission(dt, true);
-    } else {
-      super.onMove(raw, dt);
-    }
+  onStable(): void { }
+
+  onTick(dt: number): void {
+    super.onTick(dt);
+    if (this.running && this.emitTimer <= 0) { this.emitOnce(); }
   }
 
-  static onClick(raw: Car): void {
-    if (!raw.running) { return super.onClick(raw); }
+  onClick(): void {
+    if (!this.running) { super.onClick(); }
   }
 
-  static onContextMenu(item: Car): HTMLElement {
-    const root = createContextMenu(item, '小车 · 移动声源');
-    const body = menuBody(root);
+  onMove(px: number, py: number): void {
+    super.onMove(px, py);
+    this.vRec.append([px, py, performance.now()]);
+  }
+
+  onRelease(): void {
+    super.onRelease();
+    if (this.vRec.length < 2) { return; }
+    const [x, y, t] = this.vRec.at(-1);
+    const [x0, y0, t0] = this.vRec.at(-2);
+    const dt = (t - t0) / 1000;
+    const dx = x - x0;
+    const dy = y - y0;
+    const v = this.limitV(dx / dt, dy / dt);
+    this.vx = v[0];
+    this.vy = v[1];
+  }
+  private limitV(vx: number, vy: number): [number, number] {
+    const speedSq = vx * vx + vy * vy;
+    const maxSpeedSq = MAX_THROW_SPEED * MAX_THROW_SPEED;
+    if (speedSq <= maxSpeedSq) { return [vx, vy]; }
+    const scale = MAX_THROW_SPEED / Math.sqrt(speedSq);
+    return [vx * scale, vy * scale,];
+  }
+
+  static contextMenu(item: Car): HTMLElement {
+    const [root, body] = createContextMenu(item, '小车 · 移动声源');
     body.appendChild(rowLabel('运行状态'));
     const runRow = document.createElement('div');
     runRow.className = 'menu-row menu-row-cells';
@@ -145,11 +167,7 @@ export class Car extends SoundEmitter {
   }
 
   serialize(): SerializedItem {
-    return {
-      ...super.serialize(),
-      running: this.running,
-      speed: this.speed,
-    };
+    return { ...super.serialize(), speed: this.speed };
   }
 
   deserialize(data: SerializedItem): void {
@@ -157,15 +175,7 @@ export class Car extends SoundEmitter {
     if (typeof data.speed === 'number') {
       this.speed = clamp(Math.round(data.speed * 10) / 10, 0.1, CAR_SPEED_MAX);
     }
-    if (typeof data.running === 'number') {
-      if (data.running === 0) {
-        this.running = 0;
-      } else if (data.running > 0) {
-        this.running = 1;
-      } else {
-        this.running = -1;
-      }
-    }
+    this.running = 0
     if (typeof data.freq === 'number') {
       setFreq(this, data.freq);
     }

@@ -103,11 +103,8 @@ export abstract class Tool {
       const onPointerMove = (ev: PointerEvent): void => {
         const dx = ev.clientX - startX;
         const dy = startY - ev.clientY;
-        if (moved) {
-          this.onMove(X + dx, Y + dy);
-        } else {
-          moved = dx * dx + dy * dy > 16;
-        }
+        if (moved) { this.onMove(X + dx, Y + dy); }
+        else { moved = dx * dx + dy * dy > 16; }
       };
       const onPointerUp = (_ev: PointerEvent): void => {
         window.removeEventListener('pointermove', onPointerMove);
@@ -174,7 +171,7 @@ export abstract class Tool {
   }
 
   protected applyFriction(dt: number): void {
-    if (!this.grounded) {
+    if (this.grounded) {
       const C = this.constructor as typeof Tool;
       const friction = C.friction * dt;
       if (this.vx > friction) { this.vx -= friction; }

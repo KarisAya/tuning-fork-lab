@@ -25,10 +25,6 @@ export function createContextMenu(item: Tool, title: string) {
   return [menu, bodyEl];
 }
 
-export function menuBody(root: HTMLElement): HTMLElement {
-  return root.querySelector('.menu-body') as HTMLElement;
-}
-
 export function button(text: string, onClick: () => void, on = false): HTMLButtonElement {
   const b = document.createElement('button');
   b.className = `menu-btn${on ? ' on' : ''}`;

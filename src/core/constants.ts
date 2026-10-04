@@ -41,9 +41,6 @@ export const RENDER_SAMPLES = 512;
 export const SECONDARY_RENDER_SAMPLES = 128;
 export const SHADOW_SOFTNESS = GRID * 1.35;
 
-// 小车
-export const CAR_SPEED_MAX = 2;
-
 // 采样密度控件
 export const SAMPLE_MIN = 256;
 export const SAMPLE_MAX = 2048;
