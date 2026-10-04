@@ -16,9 +16,12 @@ export const INITIAL_CONFIG = {
   samples: DEFAULT_SAMPLES,
   desk: { w: 1920, h: 816 },
   items: [
-    { type: 'EchoBoard', x: 22, y: 4, dir: 'v', len: 12, reflect: true },
-    { type: 'EchoBoard', x: 22, y: 17, dir: 'v', len: 12, reflect: true },
-    { type: 'Bell', x: 16, y: 16, freq: DEFAULT_FREQ, mode: 'click' },
+    { "type": "BouncyBall", "x": 16, "y": 30, "freq": 55, "mode": "click", "bounceFactor": 1, "frictionFactor": 0.8 },
+    { "type": "SmallTable", "x": 11, "y": 0, "gw": 1, "gh": 12 },
+    { "type": "SmallTable", "x": 11, "y": 12, "gw": 12, "gh": 1 },
+    { "type": "SmallTable", "x": 22, "y": 0, "gw": 1, "gh": 12 },
+    { "type": "EchoBoard", "x": 23, "y": 8, "dir": "v", "len": 5, "reflect": true },
+    { "type": "EchoBoard", "x": 23, "y": 14, "dir": "v", "len": 5, "reflect": true },
   ],
 } as const;
 

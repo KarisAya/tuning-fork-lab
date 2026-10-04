@@ -5,8 +5,6 @@ import { FixedQueue } from '../state';
 import { Bell, appendToneControls } from './Bell';
 import { createContextMenu, rangeControl, rowLabel } from '../ui/menu';
 
-
-
 type MouseSample = [number, number, number]
 export abstract class ThrowableBell extends Bell {
   static physics = true;
@@ -47,13 +45,9 @@ const MIN_BOUNCE_SPEED = 30;
 
 
 export class BouncyBall extends ThrowableBell {
-
   static label = '篮球';
-
   static icon = '<i class="fa-solid fa-basketball"></i>';
-
   static size: readonly [number, number] = [2, 2];
-
   static shape = `\
   <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -78,6 +72,7 @@ export class BouncyBall extends ThrowableBell {
   <circle cx="16" cy="13" r="5" fill="#fff7df" opacity=".28" />
   <circle cx="19" cy="16" r="2" fill="#fffbe9" opacity=".32" />
 </svg>`;
+  static friction = GRAVITY * 0.2;
 
   bounceFactor = DEFAULT_BOUNCE_FACTOR;
   frictionFactor = DEFAULT_FRICTION_FACTOR;
@@ -103,13 +98,15 @@ export class BouncyBall extends ThrowableBell {
     }
   }
 
-  contextMenu(): HTMLElement {
-    const [root, body] = createContextMenu(this, BouncyBall.label);
-    appendToneControls(body, this);
+  protected onStable(): void { }
+
+  static contextMenu(item: BouncyBall): HTMLElement {
+    const [root, body] = createContextMenu(item, this.label);
+    appendToneControls(body, item);
     body.appendChild(rowLabel('弹跳损耗'));
-    body.appendChild(rangeControl(0, 1, 0.01, this.bounceFactor, (value) => `垂直速度 × ${value}`, (value) => { this.bounceFactor = value; },),);
+    body.appendChild(rangeControl(0, 1, 0.01, item.bounceFactor, (value) => `垂直速度 × ${value}`, (value) => { item.bounceFactor = value; }));
     body.appendChild(rowLabel('摩擦损耗'));
-    body.appendChild(rangeControl(0, 1, 0.01, this.frictionFactor, (value) => `水平速度 × ${value}`, (value) => { this.frictionFactor = value; },),);
+    body.appendChild(rangeControl(0, 1, 0.01, item.frictionFactor, (value) => `水平速度 × ${value}`, (value) => { item.frictionFactor = value; }));
     const note = document.createElement('div');
     note.className = 'menu-note';
     note.textContent = '篮球可以在地上弹跳。';
