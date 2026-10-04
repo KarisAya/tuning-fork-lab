@@ -1,6 +1,6 @@
 // 桌面配置：初始布局、导出、导入还原。
 
-import { DEFAULT_SAMPLES, GRID, DEFAULT_FREQ } from './core/constants';
+import { DEFAULT_SAMPLES, GRID } from './core/constants';
 import type { SerializedItem } from './core/types';
 import { state } from './state';
 import { addItem, removeItem } from './tools/manager';
