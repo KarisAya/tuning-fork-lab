@@ -47,40 +47,17 @@ export class SmallTable extends Tool {
     this.el.style.width = `${w}px`;
     this.el.style.height = `${h}px`;
 
-    this.el.innerHTML = `
-      <svg
-        viewBox="0 0 ${Math.max(1, w)} ${Math.max(1, h)}"
-        xmlns="http://www.w3.org/2000/svg"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="table-top" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#b68857"/>
-            <stop offset="1" stop-color="#553d25"/>
-          </linearGradient>
-        </defs>
-
-        <rect
-          x="0"
-          y="0"
-          width="${Math.max(1, w)}"
-          height="${Math.max(1, h)}"
-          rx="${Math.min(6, Math.max(1, h / 2))}"
-          fill="url(#table-top)"
-          stroke="#d8b483"
-          stroke-width="${Math.min(2, Math.max(1, h / 6))}"
-        />
-
-        <rect
-          class="hit-hint"
-          x="0"
-          y="0"
-          width="${Math.max(1, w)}"
-          height="${Math.max(1, h)}"
-          rx="${Math.min(6, Math.max(1, h / 2))}"
-        />
-      </svg>
-    `;
+    this.el.innerHTML = `\
+ <svg viewBox="0 0 ${Math.max(1, w)} ${Math.max(1, h)}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="table-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b68857"/>
+      <stop offset="1" stop-color="#553d25"/>
+    </linearGradient>
+  </defs>
+ <rect x="0" y="0" width="${Math.max(1, w)}" height="${Math.max(1, h)}" rx="${Math.min(6, Math.max(1, h / 2))}" fill="url(#table-top)" stroke="#d8b483" stroke-width="${Math.min(2, Math.max(1, h / 6))}"/>
+ <rect class="hit-hint" x="0"y="0" width="${Math.max(1, w)}" height="${Math.max(1, h)}" rx="${Math.min(6, Math.max(1, h / 2))}"/>
+</svg>`;
   }
 
   static contextMenu(item: SmallTable): HTMLElement {

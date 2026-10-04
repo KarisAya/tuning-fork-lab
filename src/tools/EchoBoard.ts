@@ -103,10 +103,12 @@ export class EchoBoard extends Tool {
     reflectRow.append(
       button('开启反射', () => {
         item.reflect = true;
+        state.occluders.clear()
         refreshMenu(item);
       }, item.reflect),
       button('关闭反射', () => {
         item.reflect = false;
+        state.occluders.clear()
         refreshMenu(item);
       }, !item.reflect),
     );
