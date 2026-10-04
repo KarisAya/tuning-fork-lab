@@ -9,6 +9,8 @@ import { deskEl } from '../ui/dom';
 import { createContextMenu } from '../ui/menu';
 import { openMenu, closeMenu } from '../ui/menu-controller';
 
+const QUART_GRID = GRID / 4;
+
 interface LandingResult {
   landed: boolean;
   landingY: number;
@@ -71,8 +73,7 @@ export abstract class Tool {
 
   get h(): number { return this.gh * GRID; }
 
-  get occluder(): UniSeg | null | null { return null; }
-
+  get occluder(): UniSeg | null { return null; }
 
   constructor(gx: number, gy: number) {
     const C = this.constructor as typeof Tool;
@@ -95,17 +96,17 @@ export abstract class Tool {
       closeMenu();
       const startX = event.clientX;
       const startY = event.clientY;
-      const offsetX = event.clientX - this.px;
-      const offsetY = event.clientY - this.py;
+      const X = this.px;
+      const Y = this.py;
       let moved = false;
       this.onDrag();
       const onPointerMove = (ev: PointerEvent): void => {
+        const dx = ev.clientX - startX;
+        const dy = startY - ev.clientY;
         if (moved) {
-          this.onMove(ev.clientX - offsetX, ev.clientY - offsetY)
+          this.onMove(X + dx, Y + dy);
         } else {
-          const dx = ev.clientX - startX;
-          const dy = ev.clientY - startY
-          moved = (dx * dx + dy * dy) > 16
+          moved = dx * dx + dy * dy > 16;
         }
       };
       const onPointerUp = (_ev: PointerEvent): void => {
@@ -124,41 +125,43 @@ export abstract class Tool {
     });
     this.render();
   }
+
   protected snapToGrid(): void {
-    const maxGX = Math.max(0, Math.floor((state.deskW - this.w) / GRID));
-    const maxGY = Math.max(0, Math.floor((state.deskH - this.h) / GRID));
-    this.x = clamp(Math.round(this.px / GRID), 0, maxGX);
-    this.y = clamp(Math.round(this.py / GRID), 0, maxGY);
+    this.x = Math.round(this.px / GRID)
+    this.y = Math.round(this.py / GRID)
     this.px = this.x * GRID;
     this.py = this.y * GRID;
   }
-  protected findPlatformLanding(oldBottom: number, newBottom: number,): number | null {
-    if (this.vy <= 0) { return null; }
+
+  protected findPlatformLanding(oldBottom: number, newBottom: number): number | null {
+    // vy < 0 表示正在下落
+    if (this.vy >= 0) { return null; }
     for (const platform of state.items) {
       if (platform.removed) { continue; }
       if (platform === this) { continue; }
       if (!(platform.constructor as typeof Tool).isPlatform) { continue; }
       if (this.px + this.w <= platform.px + 1) { continue; }
       if (this.px > platform.px + platform.w - 1) { continue; }
-      if (oldBottom > platform.py + 0.5) { continue; }
-      if (newBottom < platform.py) { continue; }
-      return platform.py;
+      const platformTop = platform.py + platform.h;
+      if (oldBottom < platformTop - QUART_GRID) { continue; }
+      if (newBottom > platformTop + QUART_GRID) { continue; }
+      return platformTop;
     }
     return null;
   }
 
   protected findLanding(dt: number): LandingResult {
-    const oldBottom = this.py + this.h;
-    const newBottom = this.py + this.vy * dt + this.h;
-    // 地面
-    if (newBottom >= state.deskH) { return { landed: true, landingY: state.deskH - this.h }; }
-    // 平台
+    const oldBottom = this.py;
+    const newBottom = this.py + this.vy * dt;
+    // 地面：底部高度不能低于 0
+    if (newBottom <= 0) { return { landed: true, landingY: 0 }; }
     const platformY = this.findPlatformLanding(oldBottom, newBottom);
-    if (platformY !== null) { return { landed: true, landingY: platformY - this.h, }; }
-    return { landed: false, landingY: 0, };
+    if (platformY !== null) { return { landed: true, landingY: platformY }; }
+    return { landed: false, landingY: 0 };
   }
+
   protected applyGravity(dt: number): void {
-    this.vy += GRAVITY * dt
+    this.vy -= GRAVITY * dt;
     const landing = this.findLanding(dt);
     if (landing.landed) {
       this.py = landing.landingY;
@@ -181,7 +184,6 @@ export abstract class Tool {
     this.px += this.vx * dt;
   }
 
-
   protected applyRebound(): void {
     if (this.px < 0) {
       this.px = 0;
@@ -201,7 +203,7 @@ export abstract class Tool {
   update(dt: number): void {
     const C = this.constructor as typeof Tool;
     if (C.physics && !this.dragging) {
-      this.stepPhysics(dt)
+      this.stepPhysics(dt);
       if (this.isStable) { this.onStable(); }
     }
     this.onTick(dt);
@@ -209,7 +211,8 @@ export abstract class Tool {
   }
 
   render(): void {
-    this.el.style.transform = `translate(${this.px}px,${this.py}px)`;
+    // py 是底部高度，屏幕 translate 从上往下算
+    this.el.style.transform = `translate(${this.px}px, ${state.deskH - this.py - this.h}px)`;
   }
 
   serialize(): SerializedItem {
@@ -240,10 +243,9 @@ export abstract class Tool {
     this.keepInsideDesk();
     this.render();
   }
+
   remove(): void {
     this.removed = true;
     this.el.remove();
   }
 }
-
-
