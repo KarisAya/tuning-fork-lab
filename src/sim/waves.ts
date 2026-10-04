@@ -12,7 +12,7 @@ import { freqHue } from '../core/frequency';
 import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
 import type { Point, Occluder, Wave } from '../core/types';
 import { state } from '../state';
-import { collectOccluders, isPointOnSegment } from './occluders';
+import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
 
 /** 2D 圆柱波近似：1/sqrt(r)。 */
@@ -25,30 +25,48 @@ export function renderWaveAlpha(wave: Wave): number {
   return wave.skipTag ? alpha * 0.5 : alpha;
 }
 
-export function makeWave(
-  position: Point,
-  freq: number,
-  radius = 0,
-  travelDistance = 0,
-  source: Point | null = null
-): Wave {
+export function makeWave(position: Point, freq: number): Wave {
   return {
     position: position,
-    r: radius,
+    r: 0,
     hue: freqHue(freq),
     freq,
-    travelDistance,
-    source: source || position,
+    travelDistance: 0,
+    source: position,
     reflections: [],
-    birthR: radius,
+    birthR: 0,
     diffraction: null,
-    diffractionDepth: 0,
     fadeOut: 1,
     skipTag: false,
     emittedReflections: new Set(),
     emittedDiffractions: new Set(),
   };
 }
+
+export function makeSubWave(position: Point,
+  parent: Wave,
+  emittedReflections?: Set<string>,
+  emittedDiffractions?: Set<string>,
+
+): Wave {
+  return {
+    position: position,
+    r: 0,
+    hue: parent.hue,
+    freq: parent.freq,
+    travelDistance: parent.travelDistance + parent.r,
+    source: position,
+    reflections: [],
+    birthR: 0,
+    diffraction: null,
+    fadeOut: 1,
+    skipTag: false,
+    emittedReflections: emittedReflections || new Set(),
+    emittedDiffractions: emittedDiffractions || new Set(),
+  };
+}
+
+
 
 export function pushWave(wave: Wave): void {
   state.waves.push(wave);
@@ -66,11 +84,11 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
   // if (parent.reflections.some((hop) => hop.occ.key === o.key)) { return null; }
   const last = parent.reflections.length
   if (last > 0 && parent.reflections[last - 1].occ.key === o.key) { return null; }
-  const nextTravelDistance = parent.travelDistance + parent.r;
   const position = reflectPointAcrossLine(parent.position, o.seg);
-  const next = makeWave(position, parent.freq, parent.r, nextTravelDistance, parent.source);
+  const next = makeSubWave(position, parent);
+  next.r = parent.r;
+  next.source = parent.source;
   next.reflections.push(...parent.reflections, { occ: o, bounce: [bounce[0], bounce[1]] });
-  next.diffractionDepth = parent.diffractionDepth;
   return next;
 }
 
@@ -80,11 +98,8 @@ function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, inc
   const [ax, ay] = o.seg[0];
   const [x, y] = parent.position;
   if (Math.abs((x - ax) * o.nx + (y - ay) * o.ny) < 0.5) { return null; }
-  const nextTravelDistance = parent.travelDistance + parent.r;
-  const next = makeWave(edge, parent.freq, 0, nextTravelDistance);
-  next.hue = parent.hue;
+  const next = makeSubWave(edge, parent, parent.emittedReflections, parent.emittedDiffractions);
   next.diffraction = { board: o, edgeIndex, edge: edge, incidentSource: incidentSource };
-  next.diffractionDepth = parent.diffractionDepth + 1;
   return next;
 }
 
@@ -97,7 +112,6 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   for (const [k, o] of state.occluders) {
     if (!o.reflect) { continue; }
     if (wave.emittedReflections.has(k)) { continue; }
-    if (wave.diffraction?.board.key === k) { continue; }
     // if (wave.r * wave.r < distanceSquarePointSegment(wave.position, o.seg) - 1e-3) { continue; }
     const hits = circleSegmentIntersections(wave.position, wave.r, o.seg);
     for (const hit of hits) {
@@ -119,13 +133,13 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   const [sx, sy] = wave.position;
   const rSq = wave.r * wave.r;
   for (const [k, o] of state.occluders) {
-    if (wave.diffraction?.board.key === k) { continue; }
+    if (wave.emittedDiffractions.has(k)) { continue; }
     if (lastkey === k) { continue; }
     for (const i of [0, 1]) {
-      if (!o.diffraction[i]) { continue; }
-      const key = `${k}:${i}`;
-      if (wave.emittedDiffractions.has(key)) { continue; }
+      // if (!o.diffraction[i]) { continue; }
       const [x, y] = o.seg[i];
+      const key = `${x},${y}`;
+      if (wave.emittedDiffractions.has(key)) { continue; }
       const dx = x - sx;
       const dy = y - sy;
       if (rSq < dx * dx + dy * dy - 1e-3) { continue; }
@@ -134,6 +148,7 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
       const incidentSource = getIncidentSource(wave, path);
       const child = createDiffractionWave(wave, o, i, incidentSource);
       if (!child) continue;
+      wave.emittedDiffractions.add(k);
       wave.emittedDiffractions.add(key);
       push(child);
     }

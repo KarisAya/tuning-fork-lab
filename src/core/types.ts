@@ -40,7 +40,6 @@ export interface Wave {
   reflections: ReflectionHop[];
   birthR: number;
   diffraction: DiffractionInfo | null;
-  diffractionDepth: number;
   /** 低于二级波计算阈值后，停止反射/衍射，并进入平滑淡出。 */
   fadeOut: number;
   skipTag: boolean;
