@@ -363,24 +363,16 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
 function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   const info = wave.diffractionInfo;
   if (!info || wave.r <= 0.5) return;
-  const boardOcc = info.board;
   tmpIgnore.clear();
   tmpIgnore.add(info.board.key);
   const ignore = tmpIgnore;
   const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
   const stepAngle = TAU / steps;
   const hue = wave.hue.toFixed(1);
-  const { edge, abX, abY, ae1X, ae1Y, crossAB_AE1 } = info;
+  const { edge, abX, abY, ae1X, ae1Y, crossAB_AE1, aeXu, aeYu, beL } = info;
   const [aX, aY] = edge
-  const [eX, eY] = info.incidentSource;
   // ---- 每波常量：位置项 ----
-  const positionFactor = diffractionPositionFactor(boardOcc, info.edgeIndex, info.incidentSource, wave.r);
-  // ---- 每波常量：入射方向单位向量 ----
-  const inDX = eX - aX;
-  const inDY = eY - aY;
-  const inLen = Math.sqrt(inDX * inDX + inDY * inDY) || 1;
-  const inUx = inDX / inLen;
-  const inUy = inDY / inLen;
+  const positionFactor = diffractionPositionFactor(beL, wave.r);
   // ---- 每波常量：板身楔形几何 ----
   const hasWedge = Math.abs(crossAB_AE1) > 1e-9;
   const radius = wave.r;
@@ -411,7 +403,7 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     }
     const p = [aX + cam * radius, aY + sam * radius] as Point;
     if (segmentBlockedByBoards(edge, p, ignore)) { flush(); continue; }
-    const angleFactor = diffractionAngleFactor(edge, inUx, inUy, p);
+    const angleFactor = diffractionAngleFactor(edge, aeXu, aeYu, p);
     flush();
     runStart = a0;
     runEnd = a1;

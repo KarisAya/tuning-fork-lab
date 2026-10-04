@@ -128,6 +128,12 @@ function createDiffractionInfo(
   const ae1X = e1X - aX;
   const ae1Y = e1Y - aY;
   const crossAB_AE1 = abX * ae1Y - abY * ae1X;
+  const aeL = Math.sqrt(aeX * aeX + aeY * aeY) || 1;
+  const aeXu = aeX / aeL;
+  const aeYu = aeY / aeL;
+  const beX = eX - bX
+  const beY = eY - bY;
+  const beL = Math.sqrt(beX * beX + beY * beY) || 1;
   return {
     board: o,
     edgeIndex,
@@ -139,6 +145,9 @@ function createDiffractionInfo(
     ae1X,
     ae1Y,
     crossAB_AE1,
+    aeXu,
+    aeYu,
+    beL
   };
 }
 /** 由一条边生成衍射子波：以边缘为新的点源。 */

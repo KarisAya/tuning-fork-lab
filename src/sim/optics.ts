@@ -83,18 +83,13 @@ export function getWavePathToPoint(wave: Wave, target: Point, finalIgnore?: stri
  * 衍射包络的位置项：路径衰减 × 边缘距离衰减 × 边缘权重。
  * 同一波的一圈采样里是常量，可在循环外预计算。
  */
-export function diffractionPositionFactor(
-  o: Occluder,
-  edgeIndex: number,
-  source: Point,
-  rr: number,
-): number {
-  const edge = o.seg[edgeIndex];
-  const inX = source[0] - edge[0];
-  const inY = source[1] - edge[1];
-  const inLen = Math.sqrt(inX * inX + inY * inY) || 1;
-  const pathAttenuation = 1 / Math.sqrt(1 + rr / DIFF_DECAY);
-  const edgeDistanceAttenuation = 1 / Math.sqrt(1 + inLen / (GRID * 3.5));
+export function diffractionPositionFactor(beL: number, r: number): number {
+  // const edge = o.seg[edgeIndex];
+  // const inX = source[0] - edge[0];
+  // const inY = source[1] - edge[1];
+  // const inLen = Math.sqrt(inX * inX + inY * inY) || 1;
+  const pathAttenuation = 1 / Math.sqrt(1 + r / DIFF_DECAY);
+  const edgeDistanceAttenuation = 1 / Math.sqrt(1 + beL / (GRID * 3.5));
   return pathAttenuation * edgeDistanceAttenuation;
 }
 

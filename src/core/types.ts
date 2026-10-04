@@ -35,6 +35,9 @@ export interface DiffractionInfo {
   ae1X: number;
   ae1Y: number;
   crossAB_AE1: number;
+  aeXu: number;
+  aeYu: number;
+  beL: number;
 }
 
 export interface Wave {
