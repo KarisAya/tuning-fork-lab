@@ -163,11 +163,12 @@ function strokeArcRuns(
     waveCtx.beginPath();
     for (let i = 0; i < arcs.length; i += 1) {
       const arc = arcs[i];
-      const c = fastCos(arc.a0);
-      const s = fastSin(arc.a0);
-      // 先 moveTo 到弧起点，避免 arc 从当前点拉一条直线过去
-      waveCtx.moveTo(cx + c * r, cy + s * r);
-      waveCtx.arc(cx, cy, r, arc.a0, arc.a1);
+      const c0 = fastCos(arc.a0);
+      const s0 = fastSin(arc.a0);
+      // 世界坐标 Y 向上 → Canvas Y 向下
+      waveCtx.moveTo(cx + c0 * r, cy - s0 * r);
+      // 世界角度逆时针 → Canvas 中反向
+      waveCtx.arc(cx, cy, r, -arc.a0, -arc.a1, true,);
     }
     waveCtx.stroke();
   }
