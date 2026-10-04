@@ -3,7 +3,7 @@ import { Tool } from './Tool';
 import { TuningFork } from './TuningFork';
 import { Bell } from './Bell';
 import { EchoBoard } from './EchoBoard';
-// import { SmallTable } from './SmallTable';
+import { SmallTable } from './SmallTable';
 // import { Car } from './Car';
 // import { BouncyBall } from './BouncyBall';
 
@@ -21,7 +21,7 @@ export function registerTool(Cls: ToolClass): void {
 registerTool(TuningFork);
 registerTool(Bell);
 registerTool(EchoBoard);
-// registerTool(SmallTable);
+registerTool(SmallTable);
 // registerTool(Car);
 // registerTool(BouncyBall);
 
