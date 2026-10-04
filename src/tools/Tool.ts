@@ -97,7 +97,10 @@ export abstract class Tool {
       const onPointerMove = (ev: PointerEvent): void => {
         const dx = ev.clientX - startX;
         const dy = startY - ev.clientY;
-        if (moved) { this.onMove(X + dx, Y + dy); }
+        if (moved) {
+          this.onMove(X + dx, Y + dy);
+          this.grounded = false;
+        }
         else { moved = dx * dx + dy * dy > 16; }
       };
       const onPointerUp = (_ev: PointerEvent): void => {
@@ -160,10 +163,7 @@ export abstract class Tool {
       this.py = landing.landingY;
       this.vy = 0;
       this.grounded = true;
-    } else {
-      this.py += this.vy * dt;
-      this.grounded = false;
-    }
+    } else { this.py += this.vy * dt; }
   }
 
   protected applyFriction(dt: number): void {
@@ -188,8 +188,8 @@ export abstract class Tool {
   }
 
   protected stepPhysics(dt: number): void {
-    this.applyGravity(dt);
-    this.applyFriction(dt);
+    if (!this.grounded) { this.applyGravity(dt); }
+    if (this.vx !== 0) { this.applyFriction(dt); }
     this.applyRebound();
   }
 

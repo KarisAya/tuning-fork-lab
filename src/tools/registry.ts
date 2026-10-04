@@ -4,8 +4,9 @@ import { TuningFork } from './TuningFork';
 import { Bell } from './Bell';
 import { EchoBoard } from './EchoBoard';
 import { SmallTable } from './SmallTable';
+import { BouncyBall } from './BouncyBall';
 import { Car } from './Car';
-// import { BouncyBall } from './BouncyBall';
+
 
 
 export type ToolClass = typeof Tool;
@@ -22,9 +23,8 @@ registerTool(TuningFork);
 registerTool(Bell);
 registerTool(EchoBoard);
 registerTool(SmallTable);
+registerTool(BouncyBall);
 registerTool(Car);
-// registerTool(BouncyBall);
-
 
 
 export function toolClassFor(type: string): ToolClass | undefined {

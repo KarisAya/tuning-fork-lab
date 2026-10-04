@@ -3,17 +3,17 @@ import { GRAVITY, RESTITUTION } from '../core/constants';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
 import { state, FixedQueue } from '../state';
-import { setFreq, Bell, appendToneControls } from './Bell';
+import { setFreq, appendToneControls } from './Bell';
+import { ThrowableBell } from "./BouncyBall"
 import { button, createContextMenu, rowLabel } from '../ui/menu';
 import { placeMenu, refreshMenu } from '../ui/menu-controller';
 
 // 小车
 const CAR_SPEED_MAX = 2;
-const MAX_THROW_SPEED = 3200;
 const FRICTION = 0.25 * GRAVITY;
 
 type RawV = [number, number, number]
-export class Car extends Bell {
+export class Car extends ThrowableBell {
   static label = '小车';
   static icon = '<i class="fa-solid fa-car-side"></i>';
   static size: readonly [number, number] = [3, 2];
@@ -105,31 +105,6 @@ export class Car extends Bell {
   onClick(): void {
     if (this.running) { this.running = 0; }
     else { super.onClick(); }
-  }
-
-  onMove(px: number, py: number): void {
-    super.onMove(px, py);
-    this.vRec.append([px, py, performance.now()]);
-  }
-
-  onRelease(): void {
-    super.onRelease();
-    if (this.vRec.length < 2) { return; }
-    const [x, y, t] = this.vRec.at(-1);
-    const [x0, y0, t0] = this.vRec.at(-2);
-    const dt = (t - t0) / 1000;
-    const dx = x - x0;
-    const dy = y - y0;
-    const v = this.limitV(dx / dt, dy / dt);
-    this.vx = v[0];
-    this.vy = v[1];
-  }
-  private limitV(vx: number, vy: number): [number, number] {
-    const speedSq = vx * vx + vy * vy;
-    const maxSpeedSq = MAX_THROW_SPEED * MAX_THROW_SPEED;
-    if (speedSq <= maxSpeedSq) { return [vx, vy]; }
-    const scale = MAX_THROW_SPEED / Math.sqrt(speedSq);
-    return [vx * scale, vy * scale,];
   }
 
   static contextMenu(item: Car): HTMLElement {
