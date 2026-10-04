@@ -24,7 +24,7 @@ import {
 import { closeMenu, isMenuOpen } from './ui/menu-controller';
 import { setSampleDensity } from './ui/sample-density';
 
-export function layout(): void {
+function layout(): void {
   state.deskW = Math.floor(window.innerWidth);
   state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbar.offsetHeight) / GRID) * GRID);
   state.dpr = Math.min(window.devicePixelRatio || 1, 2);
