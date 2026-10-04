@@ -198,7 +198,7 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
     if (wave.emittedDiffractions.has(k)) { continue; }
     if (lastkey === k) { continue; }
     for (const i of [0, 1]) {
-      // if (!o.diffraction[i]) { continue; }
+      if (!o.diffraction[i]) { continue; }
       const [x, y] = o.seg[i];
       const key = `${x},${y}`;
       if (wave.emittedDiffractions.has(key)) { continue; }
