@@ -358,7 +358,7 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
 // 衍射波
 // ---------------------------------------------------------------------------
 
-function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
+function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
   const info = wave.diffractionInfo;
   if (!info || wave.r <= 0.5) return;
   tmpIgnore.clear();
@@ -402,7 +402,7 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     const p = [aX + cam * radius, aY + sam * radius] as Point;
     if (segmentBlockedByBoards(edge, p, ignore)) { flush(); continue; }
     const angleFactor = diffractionAngleFactor(edge, aeXu, aeYu, p);
-    const alpha = positionFactor * angleFactor;
+    const alpha = Math.sqrt(positionFactor * angleFactor * baseAlpha);
     const quantizedAlpha = Math.round(alpha * ALPHA_INV) * ALPHA_STEP;
     if (runStart < 0) {
       runStart = a0;

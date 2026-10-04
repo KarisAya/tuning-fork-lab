@@ -218,16 +218,13 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
 
 export function updateWaves(dt: number): void {
   if (!state.waves.length) return;
-  if (state.occStale === 0) { collectOccluders(); }
+  if (state.occStale) { collectOccluders(); }
   for (let i = state.waves.length - 1; i >= 0; i -= 1) {
     const wave = state.waves[i];
     wave.r += state.waveSpeed * dt;
     if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
       wave.fadeOut -= dt / WAVE_FADE_DURATION;
-      if (wave.fadeOut < 0) {
-        console.log('wave removed', wave);
-        state.waves.splice(i, 1);
-      }
+      if (wave.fadeOut < 0) { state.waves.splice(i, 1); }
       continue;
     }
     if (wave.skipTag) continue;
