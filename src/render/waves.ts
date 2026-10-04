@@ -142,7 +142,8 @@ function strokeArcRuns(
   sat: number,
   light: number,
 ): void {
-  const [cx, cy] = c;
+  const cx = c[0];
+  const cy = state.deskH - c[1];
   if (runs.length === 0) return;
   const buckets = new Map<number, ArcRun[]>();
   for (let i = 0; i < runs.length; i += 1) {
