@@ -14,7 +14,7 @@ import {
   getWavePathToPoint,
   segmentBlockedByBoards,
 } from '../sim/optics';
-import { renderWaveAlpha } from '../sim/waves';
+import { renderWaveAlpha, isInvalidDiffractionPoint } from '../sim/waves';
 import { state } from '../state';
 import { waveCtx } from '../ui/dom';
 
@@ -361,7 +361,7 @@ function drawReflectedWave(wave: Wave, baseAlpha: number): void {
 // ---------------------------------------------------------------------------
 
 function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
-  const info = wave.diffraction;
+  const info = wave.diffractionInfo;
   if (!info || wave.r <= 0.5) return;
   const boardOcc = info.board;
   tmpIgnore.clear();
@@ -370,8 +370,8 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   const steps = sampleCountForRadius(wave.r, SECONDARY_RENDER_SAMPLES);
   const stepAngle = TAU / steps;
   const hue = wave.hue.toFixed(1);
-  const [aX, aY] = info.edge
-  const [bX, bY] = boardOcc.seg[1 - info.edgeIndex];
+  const { edge, abX, abY, ae1X, ae1Y, crossAB_AE1 } = info;
+  const [aX, aY] = edge
   const [eX, eY] = info.incidentSource;
   // ---- 每波常量：位置项 ----
   const positionFactor = diffractionPositionFactor(boardOcc, info.edgeIndex, info.incidentSource, wave.r);
@@ -382,24 +382,12 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
   const inUx = inDX / inLen;
   const inUy = inDY / inLen;
   // ---- 每波常量：板身楔形几何 ----
-  const vecABX = bX - aX;
-  const vecABY = bY - aY;
-  const denom = vecABX * vecABX + vecABY * vecABY;
-  const t = ((eX - aX) * vecABX + (eY - aY) * vecABY) / denom;
-  const e1X = eX - 2 * t * vecABX;
-  const e1Y = eY - 2 * t * vecABY;
-  const vecAE1X = e1X - aX;
-  const vecAE1Y = e1Y - aY;
-  const crossAB_AE1 = vecABX * vecAE1Y - vecABY * vecAE1X;
   const hasWedge = Math.abs(crossAB_AE1) > 1e-9;
-  const edgePt = info.edge;
   const radius = wave.r;
-
   const runs: ArcRun[] = [];
   let runStart = -1;
   let runEnd = 0;
   let runAlpha = 0;
-
   const flush = (): void => {
     if (runStart < 0) return;
     runs.push({ a0: runStart, a1: runEnd, alpha: runAlpha });
@@ -414,16 +402,16 @@ function drawDiffractionWave(wave: Wave, _baseAlpha: number): void {
     // 板身楔形剔除：vecAP = (cam * radius, sam * radius)，
     // radius > 0 只判符号，省两次乘法。
     if (hasWedge) {
-      const crossAB_AP = vecABX * sam - vecABY * cam;
-      const crossAE1_AP = vecAE1X * sam - vecAE1Y * cam;
+      const crossAB_AP = abX * sam - abY * cam;
+      const crossAE1_AP = ae1X * sam - ae1Y * cam;
       if (crossAB_AE1 * crossAB_AP >= 0 && crossAB_AE1 * crossAE1_AP <= 0) {
         flush();
         continue;
       }
     }
     const p = [aX + cam * radius, aY + sam * radius] as Point;
-    if (segmentBlockedByBoards(edgePt, p, ignore)) { flush(); continue; }
-    const angleFactor = diffractionAngleFactor(edgePt, inUx, inUy, p);
+    if (segmentBlockedByBoards(edge, p, ignore)) { flush(); continue; }
+    const angleFactor = diffractionAngleFactor(edge, inUx, inUy, p);
     flush();
     runStart = a0;
     runEnd = a1;
@@ -455,7 +443,7 @@ export function renderWaves(): void {
     const alpha = renderWaveAlpha(wave);
     if (!circleRingIntersectsViewport(wave.position, wave.r, w, h)) continue;
     if (wave.reflections.length > 0) { reflectedWaves.push([wave, alpha]); }
-    else if (wave.diffraction) { diffractionWaves.push([wave, alpha]); }
+    else if (wave.diffractionInfo) { diffractionWaves.push([wave, alpha]); }
     else { directWaves.push([wave, alpha]); }
   }
 

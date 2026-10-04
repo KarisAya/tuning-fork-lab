@@ -169,7 +169,7 @@ export function buildOccluderCache(wave: Wave): OccluderCache[] {
   const [x, y] = wave.position;
   for (const o of state.occluders.values()) {
     // 衍射波的母板只负责定义边缘，不作为自己的遮挡体。
-    if (wave.diffraction?.board === o) continue;
+    if (wave.diffractionInfo?.board === o) continue;
     const [[x0, y0], [x1, y1]] = o.seg;
     // 径向剪枝
     const dMinSq = distanceSquarePointSegment(wave.position, o.seg);

@@ -10,7 +10,7 @@ import {
 } from '../core/constants';
 import { freqHue } from '../core/frequency';
 import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
-import type { Point, Occluder, Wave } from '../core/types';
+import type { Point, Occluder, Wave, DiffractionInfo } from '../core/types';
 import { state } from '../state';
 import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
@@ -35,6 +35,7 @@ export function makeWave(position: Point, freq: number): Wave {
     source: position,
     reflections: [],
     birthR: 0,
+    diffractionInfo: null,
     diffraction: null,
     fadeOut: 1,
     skipTag: false,
@@ -45,8 +46,6 @@ export function makeWave(position: Point, freq: number): Wave {
 
 export function makeSubWave(position: Point,
   parent: Wave,
-  emittedReflections?: Set<string>,
-  emittedDiffractions?: Set<string>,
 
 ): Wave {
   return {
@@ -58,11 +57,12 @@ export function makeSubWave(position: Point,
     source: position,
     reflections: [],
     birthR: 0,
+    diffractionInfo: null,
     diffraction: null,
     fadeOut: 1,
     skipTag: false,
-    emittedReflections: emittedReflections || new Set(),
-    emittedDiffractions: emittedDiffractions || new Set(),
+    emittedReflections: new Set(),
+    emittedDiffractions: new Set(),
   };
 }
 
@@ -92,14 +92,65 @@ function createReflectedWave(parent: Wave, o: Occluder, bounce: Point): Wave | n
   return next;
 }
 
+export function isInvalidDiffractionPoint(
+  p: Point,
+  wave: Wave,
+): boolean {
+  const info = wave.diffractionInfo;
+  if (!info) return false;
+  const { edge, abX, abY, ae1X, ae1Y, crossAB_AE1 } = info;
+  if (Math.abs(crossAB_AE1) <= 1e-9) { return false; }
+  const apX = p[0] - edge[0];
+  const apY = p[1] - edge[1];
+  const crossAB_AP = abX * apY - abY * apX;
+  const crossAE1_AP = ae1X * apY - ae1Y * apX;
+  return (crossAB_AE1 * crossAB_AP >= 0 && crossAB_AE1 * crossAE1_AP <= 0);
+}
+
+function createDiffractionInfo(
+  o: Occluder,
+  edgeIndex: number,
+  edge: Point,
+  incidentSource: Point,
+  parent: Wave,
+): DiffractionInfo {
+  const [aX, aY] = edge;
+  const [bX, bY] = o.seg[1 - edgeIndex];
+  const [eX, eY] = incidentSource;
+  const abX = bX - aX;
+  const abY = bY - aY;
+  const aeX = eX - aX;
+  const aeY = eY - aY;
+  const denom = abX * abX + abY * abY;
+  const t = denom > 1e-12 ? (aeX * abX + aeY * abY) / denom : 0;
+  const e1X = eX - 2 * t * abX;
+  const e1Y = eY - 2 * t * abY;
+  const ae1X = e1X - aX;
+  const ae1Y = e1Y - aY;
+  const crossAB_AE1 = abX * ae1Y - abY * ae1X;
+  return {
+    board: o,
+    edgeIndex,
+    edge,
+    incidentSource,
+    parent,
+    abX,
+    abY,
+    ae1X,
+    ae1Y,
+    crossAB_AE1,
+  };
+}
 /** 由一条边生成衍射子波：以边缘为新的点源。 */
 function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, incidentSource: Point): Wave | null {
   const edge = o.seg[edgeIndex];
   const [ax, ay] = o.seg[0];
   const [x, y] = parent.position;
   if (Math.abs((x - ax) * o.nx + (y - ay) * o.ny) < 0.5) { return null; }
-  const next = makeSubWave(edge, parent, parent.emittedReflections, parent.emittedDiffractions);
-  next.diffraction = { board: o, edgeIndex, edge: edge, incidentSource: incidentSource };
+  if (isInvalidDiffractionPoint(edge, parent)) { return null; }
+  const next = makeSubWave(edge, parent);
+  next.diffractionInfo = createDiffractionInfo(o, edgeIndex, edge, incidentSource, parent);
+  parent.diffraction = next;
   return next;
 }
 
@@ -122,6 +173,8 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
       if (reflected) {
         push(reflected);
         wave.emittedReflections.add(k);
+        wave.diffraction?.emittedReflections.add(k);
+        wave.diffractionInfo?.parent.emittedReflections.add(k);
         break;
       }
     }
@@ -149,7 +202,11 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
       const child = createDiffractionWave(wave, o, i, incidentSource);
       if (!child) continue;
       wave.emittedDiffractions.add(k);
+      wave.diffraction?.emittedReflections.add(k);
+      wave.diffractionInfo?.parent.emittedDiffractions.add(k);
       wave.emittedDiffractions.add(key);
+      wave.diffraction?.emittedDiffractions.add(key);
+      wave.diffractionInfo?.parent.emittedDiffractions.add(key);
       push(child);
     }
   }

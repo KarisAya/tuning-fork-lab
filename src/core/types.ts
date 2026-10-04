@@ -28,6 +28,13 @@ export interface DiffractionInfo {
   edgeIndex: number;
   edge: Point;
   incidentSource: Point;
+  parent: Wave;
+  // 几何缓存
+  abX: number;
+  abY: number;
+  ae1X: number;
+  ae1Y: number;
+  crossAB_AE1: number;
 }
 
 export interface Wave {
@@ -39,7 +46,8 @@ export interface Wave {
   source: Point;
   reflections: ReflectionHop[];
   birthR: number;
-  diffraction: DiffractionInfo | null;
+  diffractionInfo: DiffractionInfo | null;
+  diffraction: Wave | null;
   /** 低于二级波计算阈值后，停止反射/衍射，并进入平滑淡出。 */
   fadeOut: number;
   skipTag: boolean;
