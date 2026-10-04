@@ -16,16 +16,9 @@ export const INITIAL_CONFIG = {
   samples: DEFAULT_SAMPLES,
   desk: { w: 1920, h: 816 },
   items: [
-    { "type": "SmallTable", "x": 7, "y": 28, "gw": 1, "gh": 6 },
-    { "type": "SmallTable", "x": 13, "y": 28, "gw": 1, "gh": 6 },
-    { "type": "SmallTable", "x": 7, "y": 27, "gw": 7, "gh": 1 },
-    { "type": "SmallTable", "x": 10, "y": 26, "gw": 1, "gh": 1 },
-    { "type": "EchoBoard", "x": 7, "y": 20, "dir": "v", "len": 7, "reflect": false },
-    { "type": "EchoBoard", "x": 7, "y": 19, "dir": "h", "len": 7, "reflect": false },
-    { "type": "EchoBoard", "x": 7, "y": 3, "dir": "h", "len": 7, "reflect": false },
-    { "type": "EchoBoard", "x": 14, "y": 20, "dir": "v", "len": 3, "reflect": false },
-    { "type": "EchoBoard", "x": 14, "y": 24, "dir": "v", "len": 3, "reflect": false },
-    { "type": "TuningFork", "x": 9, "y": 21, "freq": 55, "mode": "click" },
+    { type: 'EchoBoard', x: 22, y: 4, dir: 'v', len: 12, reflect: true },
+    { type: 'EchoBoard', x: 22, y: 17, dir: 'v', len: 12, reflect: true },
+    { type: 'Bell', x: 16, y: 16, freq: DEFAULT_FREQ, mode: 'click' },
   ],
 } as const;
 
@@ -71,14 +64,15 @@ export function loadConfig(cfg: unknown): void {
     setSampleDensity(data.samples);
   }
   for (const raw of data.items) {
-    if (!raw || typeof raw !== 'object') { continue; }
+    if (!raw || typeof raw !== 'object') {
+      continue;
+    }
     const d = raw as SerializedItem;
     const C = toolClassFor(d.type);
     if (!C) continue;
     // @ts-ignore C 一定是实现的
-    const item = new C(typeof d.x === 'number' ? d.x : 0, typeof d.y === 'number' ? d.y : 0,);
+    const item = new C(typeof d.x === 'number' ? d.x : 0, typeof d.y === 'number' ? d.y : 0);
     item.deserialize(d);
     addItem(item);
   }
 }
-

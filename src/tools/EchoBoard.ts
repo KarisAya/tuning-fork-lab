@@ -33,8 +33,9 @@ export class EchoBoard extends Tool {
     if (this.removed) { return null; }
     if (this.dragging) { return null; }
     const key = `${this.px},${this.py},${this.gw},${this.gh},${this.dir},${this.len}`;
-    const y = this.py + this.gh * GRID;
-    const seg = (this.dir === 'h' ? [[this.px, y], [this.px + this.gw * GRID, y]] : [[this.px, this.py], [this.px, y]]) as Segment;
+    const px = this.px
+    const py = this.py
+    const seg = (this.dir === 'h' ? [[px, py], [this.px + this.gw * GRID, py]] : [[px, py], [px, py + this.gh * GRID]]) as Segment;
     return [key, seg, this.reflect] as UniSeg
   }
   applyGeom(): void {
