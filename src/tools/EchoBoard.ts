@@ -108,7 +108,6 @@ export class EchoBoard extends Tool {
       }, item.reflect),
       button('关闭反射', () => {
         item.reflect = false;
-        state.occluders.clear()
         refreshMenu(item);
       }, !item.reflect),
     );

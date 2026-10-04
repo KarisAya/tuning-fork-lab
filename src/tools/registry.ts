@@ -4,7 +4,7 @@ import { TuningFork } from './TuningFork';
 import { Bell } from './Bell';
 import { EchoBoard } from './EchoBoard';
 import { SmallTable } from './SmallTable';
-// import { Car } from './Car';
+import { Car } from './Car';
 // import { BouncyBall } from './BouncyBall';
 
 
@@ -22,7 +22,7 @@ registerTool(TuningFork);
 registerTool(Bell);
 registerTool(EchoBoard);
 registerTool(SmallTable);
-// registerTool(Car);
+registerTool(Car);
 // registerTool(BouncyBall);
 
 
