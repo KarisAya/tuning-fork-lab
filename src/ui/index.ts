@@ -1,5 +1,5 @@
 import { CONFIG_VERSION, GRID, SAMPLE_MIN, SAMPLE_MAX, SAMPLE_STEP } from '../core/constants';
-import type { SerializedItem } from '../core/types';
+import type { Config, SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
 import { state } from '../core/state';
 import { type ToolClass, TOOL_BY_NAME, addItem, spawnTool } from '../tools/manager';
@@ -83,10 +83,11 @@ function setSampleDensity(samples: number) {
 
 export function loadConfig(cfg: unknown): void {
     if (!cfg || typeof cfg !== 'object') { return; }
-    const data = cfg as { samples?: unknown; items?: unknown };
+    const data = cfg as Config;
     if (!Array.isArray(data.items)) { return; }
     if (typeof data.samples === 'number') { setSampleDensity(data.samples); }
-    if (typeof data.samples === 'number') { setSampleDensity(data.samples); }
+    if (typeof data.waveSpeed === 'number') { state.waveSpeed = data.waveSpeed; }
+    resetDesk();
     for (const raw of data.items) {
         if (!raw || typeof raw !== 'object') { continue; }
         const d = raw as SerializedItem;

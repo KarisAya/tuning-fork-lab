@@ -13,7 +13,7 @@ const INITIAL_CONFIG: Config = {
   samples: DEFAULT_SAMPLES,
   waveSpeed: WAVE_SPEED,
   items: [
-    { "type": "BouncyBall", "x": 5, "y": 7, "freq": 55, "mode": "click", "bounceFactor": 0.8, "frictionFactor": 0.8 },
+    { "type": "BouncyBall", "x": 5, "y": 11, "freq": 55, "mode": "click", "bounceFactor": 0.8, "frictionFactor": 0.8 },
     { "type": "SmallTable", "x": 11, "y": 0, "gw": 1, "gh": 6 },
     { "type": "SmallTable", "x": 0, "y": 6, "gw": 12, "gh": 1 },
     { "type": "SmallTable", "x": 0, "y": 0, "gw": 1, "gh": 6 },
@@ -40,8 +40,6 @@ function layout(): void {
 
 export function boot(): void {
   state.paused = false;
-  state.waveSpeed = WAVE_SPEED;
-  state.samples = DEFAULT_SAMPLES;
   sampleRange.min = String(SAMPLE_MIN);
   sampleRange.max = String(SAMPLE_MAX);
   sampleRange.step = String(SAMPLE_STEP);
