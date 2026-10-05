@@ -29,83 +29,26 @@ import { setSampleDensity } from './ui/sample-density';
 
 function layout(): void {
   const rect = deskEl.getBoundingClientRect();
-
   state.deskW = Math.max(1, Math.floor(rect.width));
   state.deskH = Math.max(1, Math.floor(rect.height));
-
-  state.dpr = Math.min(
-    window.devicePixelRatio || 1,
-    2
-  );
-
-  deskEl.style.backgroundSize =
-    `${GRID}px ${GRID}px, ${GRID}px ${GRID}px`;
-
-  const pixelWidth =
-    Math.max(
-      1,
-      Math.floor(state.deskW * state.dpr)
-    );
-
-  const pixelHeight =
-    Math.max(
-      1,
-      Math.floor(state.deskH * state.dpr)
-    );
-
-  if (
-    canvas.width !== pixelWidth ||
-    canvas.height !== pixelHeight
-  ) {
-    canvas.width = pixelWidth;
-    canvas.height = pixelHeight;
-  }
-
+  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  deskEl.style.backgroundSize = `${GRID}px ${GRID}px, ${GRID}px ${GRID}px`;
+  const pixelWidth = Math.max(1, Math.floor(state.deskW * state.dpr));
+  const pixelHeight = Math.max(1, Math.floor(state.deskH * state.dpr));
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
   canvas.style.width = "100%";
   canvas.style.height = "100%";
-
-  waveCtx.setTransform(
-    state.dpr,
-    0,
-    0,
-    state.dpr,
-    0,
-    0
-  );
-
-  for (const item of state.items) {
-    item.keepInsideDesk();
-  }
+  waveCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  for (const item of state.items) { item.keepInsideDesk(); }
 }
 
 function updatePauseButton(): void {
-  const icon =
-    pauseBtn.querySelector("i");
-
+  const icon = pauseBtn.querySelector("i");
   if (!icon) return;
-
-  icon.className = state.paused
-    ? "fa-solid fa-play"
-    : "fa-solid fa-pause";
-
-  pauseBtn.setAttribute(
-    "aria-label",
-    state.paused
-      ? "继续"
-      : "暂停"
-  );
-
-  pauseBtn.setAttribute(
-    "title",
-    state.paused
-      ? "继续"
-      : "暂停"
-  );
-
-  pauseBtn.classList.toggle(
-    "on",
-    state.paused
-  );
+  icon.className = state.paused ? "fa-solid fa-play" : "fa-solid fa-pause";
+  pauseBtn.setAttribute("aria-label", state.paused ? "继续" : "暂停");
+  pauseBtn.setAttribute("title", state.paused ? "继续" : "暂停");
+  pauseBtn.classList.toggle("on", state.paused);
 }
 
 function togglePause(): void {
@@ -120,30 +63,23 @@ export function boot(): void {
   sampleRange.max = String(SAMPLE_MAX);
   sampleRange.step = String(SAMPLE_STEP);
   layout();
-  settingsBtn.addEventListener("click", (event) => { event.stopPropagation(); toggleSettings(); });
-
-  closeSettingsBtn.addEventListener("click", closeSettings);
-  pauseBtn.addEventListener('click', () => {
-    togglePause();
+  settingsBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleSettings();
   });
+  closeSettingsBtn.addEventListener("click", closeSettings);
+  pauseBtn.addEventListener('click', togglePause);
   resetBtn.addEventListener('click', clearDesk);
   exportBtn.addEventListener('click', exportConfig);
-  importBtn.addEventListener('click', () => {
-    fileIn.click();
-  });
-  sampleRange.addEventListener('input', () => {
-    setSampleDensity(Number(sampleRange.value));
-  });
+  importBtn.addEventListener('click', fileIn.click);
+  sampleRange.addEventListener('input', () => { setSampleDensity(Number(sampleRange.value)); });
   fileIn.addEventListener('change', () => {
     const file = fileIn.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        loadConfig(JSON.parse(String(reader.result)));
-      } catch (error) {
-        console.warn('配置解析失败', error);
-      }
+      try { loadConfig(JSON.parse(String(reader.result))); }
+      catch (error) { console.warn('配置解析失败', error); }
     };
     reader.readAsText(file);
     fileIn.value = '';
@@ -151,7 +87,10 @@ export function boot(): void {
   window.addEventListener('keydown', (event) => {
     const target = event.target as HTMLElement | null;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
-    if (event.code === 'Space') { event.preventDefault(); togglePause(); }
+    if (event.code === 'Space') {
+      event.preventDefault();
+      togglePause();
+    }
   });
   // document.addEventListener('pointerdown', (event) => { if (isMenuOpen() && !menuEl.contains(event.target as Node)) { closeMenu(); } });
   document.addEventListener(
@@ -162,11 +101,12 @@ export function boot(): void {
       if (settingsPanel.classList.contains("open") && !settingsPanel.contains(target) && !settingsBtn.contains(target)) { closeSettings(); }
     }
   );
-
   deskEl.addEventListener('contextmenu', (event) => event.preventDefault());
-  const resizeObserver = new ResizeObserver(() => { layout(); for (const item of state.items) { item.render(); } });
+  const resizeObserver = new ResizeObserver(() => {
+    layout();
+    for (const item of state.items) { item.render(); }
+  });
   resizeObserver.observe(deskEl);
-  window.addEventListener('resize', () => { layout(); for (const item of state.items) { item.render(); } });
   toolsEl.innerHTML = '';
   for (const C of TOOL_REGISTRY) {
     const button = document.createElement('button');
