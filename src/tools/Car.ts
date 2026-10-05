@@ -55,50 +55,28 @@ export class Car extends ThrowableBell {
   nextRunning: -1 | 0 | 1 = 1;
   speed = 1;
   vRec = new FixedQueue<RawV>(8);
-  stepPhysics(dt: number): void {
-    super.applyGravity(dt);
-    if (this.grounded) {
-      if (this.running) {
-        const uSpeed = state.waveSpeed * this.speed;
-        const speed = this.running * uSpeed;
-        const dv = uSpeed * dt;
-        const diff = speed - this.vx;
-        if (Math.abs(diff) < dv) { this.vx = speed; }
-        else {
-          const factor = Math.sign(diff) === Math.sign(this.vx) ? 1 : 3.8;
-          this.vx += Math.sign(diff) * dv * factor;
-        }
-        if (this.px <= 0 || this.px + this.w >= state.deskW) {
-          if (this.px <= 0) {
-            this.px = 0;
-            this.running = 1;
-          }
-          else {
-            this.px = state.deskW - this.w;
-            this.running = -1
-          }
-          const vx = -this.vx * RESTITUTION;
-          this.vx = Math.abs(vx) > uSpeed ? vx : -speed;
-        }
-        this.px += this.vx * dt;
-        return;
-      } else {
-        const C = this.constructor as typeof Car;
-        const friction = C.friction * dt;
-        if (this.vx > friction) { this.vx -= friction; }
-        else if (this.vx < -friction) { this.vx += friction; }
-        else { this.vx = 0; }
+  protected applyFriction(dt: number): void {
+    if (this.running) {
+      const uSpeed = state.waveSpeed * this.speed;
+      const speed = this.running * uSpeed;
+      const dv = uSpeed * dt;
+      const diff = speed - this.vx;
+      if (Math.abs(diff) < dv) { this.vx = speed; }
+      else {
+        const factor = Math.sign(diff) === Math.sign(this.vx) ? 1 : 3.8;
+        this.vx += Math.sign(diff) * dv * factor;
       }
-    }
-    super.applyRebound();
-    this.px += this.vx * dt;
+      this.px += this.vx * dt;
+    } else { super.applyFriction(dt); }
   }
-
   onStable(): void { }
 
   onTick(dt: number): void {
     super.onTick(dt);
-    if (this.running && this.emitTimer <= 0) { this.emitOnce(); }
+    if (this.running) {
+      if (this.emitTimer <= 0) { this.emitOnce(); }
+      if (this.vx === 0) { this.vx = this.running; }
+    }
   }
 
   onClick(): void {

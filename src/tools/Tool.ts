@@ -170,13 +170,11 @@ export abstract class Tool {
   }
 
   protected applyFriction(dt: number): void {
-    if (this.grounded) {
-      const C = this.constructor as typeof Tool;
-      const friction = C.friction * dt;
-      if (this.vx > friction) { this.vx -= friction; }
-      else if (this.vx < -friction) { this.vx += friction; }
-      else { this.vx = 0; }
-    }
+    const C = this.constructor as typeof Tool;
+    const friction = C.friction * dt;
+    if (this.vx > friction) { this.vx -= friction; }
+    else if (this.vx < -friction) { this.vx += friction; }
+    else { this.vx = 0; }
     this.px += this.vx * dt;
   }
 
