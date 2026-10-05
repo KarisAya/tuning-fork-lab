@@ -1,13 +1,12 @@
 // 桌面上的可拖拽工具基类：物理、拖拽、序列化统一在这里。
 // 外观 / 发声 / 遮挡等能力由子类覆写，基类只给安全默认值。
 
-import { FRICTION, GRAVITY, GRID, RESTITUTION } from '../core/constants';
-import { clamp } from '../core/math';
+import { GRID, GRAVITY, FRICTION, RESTITUTION } from '../core/constants';
 import type { UniSeg, SerializedItem } from '../core/types';
-import { state } from '../state';
+import { clamp } from '../core/math';
+import { state } from '../core/state';
 import { deskEl } from '../ui/dom';
-import { createContextMenu } from '../ui/menu';
-import { openMenu, closeMenu } from '../ui/menu-controller';
+import { createContextMenu, openMenu, closeMenu } from '../ui/menu';
 
 const QUART_GRID = GRID / 4;
 

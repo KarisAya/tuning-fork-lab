@@ -1,7 +1,7 @@
 // 桌面上的工具增删。只操作 state.items，不碰 DOM 以外的逻辑。
-import type { Tool } from './Tool';
 import { GRID } from '../core/constants';
 import { state } from '../core/state';
+import type { Tool } from './Tool';
 
 export type ToolClass = typeof Tool;
 export const TOOL_REGISTRY: ToolClass[] = [];

@@ -1,17 +1,27 @@
 // 全局常量：数值只在这里定义，其他模块只读。
 export const CONFIG_VERSION = 10;
-
 export const GRID = 24;
 export const GRAVITY = 2400;
 export const FRICTION = 0.5;
 export const RESTITUTION = 0.6;
+export const WAVE_SPEED = GRID * 4;
 export const MAX_THROW_SPEED = 3200;
+
+// 频率档位表：等比十档 + 两端兜底
+export const FREQ_TABLE = [13.75, 27.5, 55, 110, 220, 440, 880, 1760, 3520, 7040] as const;
+export const TOP_LEVEL = FREQ_TABLE.length - 1;
+export const FREQ_MIN = 10;
+export const FREQ_MAX = 10000;
+export const DEFAULT_LEVEL = 5;
+export const DEFAULT_FREQ = FREQ_TABLE[DEFAULT_LEVEL];
+
+
+
 export const MAX_DT = 1 / 30;
 export const TAU = Math.PI * 2;
 export const HALF_PI = Math.PI * 0.5;
 
 // 波形生命周期与强度
-export const WAVE_SPEED = GRID * 4;
 export const WAVE_LW = 1.05;
 export const MAX_TRAVEL_DISTANCE = GRID * 32;
 export const MIN_WAVE_EFFECTIVE_ALPHA = 0.018;
@@ -22,15 +32,6 @@ export const WAVE_FADE_DURATION = 2;
 export const EMIT_SLOW = 1;
 export const EMIT_FAST = 0.05;
 
-
-
-// 频率档位表：等比十档 + 两端兜底
-export const FREQ_TABLE = [13.75, 27.5, 55, 110, 220, 440, 880, 1760, 3520, 7040] as const;
-export const TOP_LEVEL = FREQ_TABLE.length - 1;
-export const FREQ_MIN = 10;
-export const FREQ_MAX = 10000;
-export const DEFAULT_LEVEL = 5;
-export const DEFAULT_FREQ = FREQ_TABLE[DEFAULT_LEVEL];
 // 反射 / 衍射
 export const WAVE_COUNT_THROTTLE_START = 128;
 export const WAVE_COUNT_THROTTLE_STRICT = 512;

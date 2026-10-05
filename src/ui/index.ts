@@ -10,7 +10,7 @@ import {
     sampleRange, sampleVal,
     exportBtn, fileIn, importBtn,
 } from './dom';
-import { openMenu, closeMenu } from './menu';
+import { closeMenu } from './menu';
 
 export function openSettings(): void {
     settingsPanel.classList.add("open");
@@ -49,15 +49,6 @@ export function resetDesk(): void {
     state.occStale = true;
     closeMenu();
 }
-
-
-
-export function refreshMenu(item: unknown): void {
-    const openItem = state.openItem.item;
-    if (!openItem || openItem !== item) return;
-    openMenu(state.openItem.at, openItem);
-}
-
 
 /** 点击菜单外部时收起菜单。 */
 export function isMenuOpen(): boolean {

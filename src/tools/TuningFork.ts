@@ -1,8 +1,8 @@
 // tools/TuningFork.ts
-import { GRID, WAVE_SPEED } from '../core/constants';
-import { state } from '../state';
+import { GRID } from '../core/constants';
+import { state } from '../core/state';
 import { Bell } from './Bell';
-import { pushWave, makeWave } from '../sim/waves';
+import { pushWave, makeWave } from '../render/wave';
 // 音叉共振
 const RES_RANGE = GRID * 8;
 const RES_DETUNE = 0.035;
@@ -55,7 +55,7 @@ export class TuningFork extends Bell {
     const dy = other.py - this.py
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d > RES_RANGE) { return; }
-    let t = d / WAVE_SPEED;
+    let t = d / state.waveSpeed;
     // t 秒后执行
     this.timers.push((dt: number) => {
       t -= dt;

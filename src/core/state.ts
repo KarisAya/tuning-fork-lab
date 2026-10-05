@@ -16,8 +16,5 @@ export const state = {
   waves: new Array<Wave>(),
   occluders: new Map<string, Occluder>(),
   occStale: true,
-  openItem: {
-    item: null as Tool | null,
-    at: [0, 0] as Point,
-  }
+  openItem: { item: null as Tool | null, x: 0, y: 0 }
 };
