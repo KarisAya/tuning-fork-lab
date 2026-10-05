@@ -155,13 +155,17 @@ export abstract class Tool {
     return { landed: false, landingY: 0 };
   }
 
+  protected onLand(landY: number): void {
+    this.py = landY;
+    this.vy = 0;
+    this.grounded = true;
+  }
+
   protected applyGravity(dt: number): void {
     this.vy -= GRAVITY * dt;
     const landing = this.findLanding(dt);
     if (landing.landed) {
-      this.py = landing.landingY;
-      this.vy = 0;
-      this.grounded = true;
+      this.onLand(landing.landingY);
     } else { this.py += this.vy * dt; }
   }
 
@@ -187,9 +191,20 @@ export abstract class Tool {
   }
 
   protected stepPhysics(dt: number): void {
-    if (!this.grounded) { this.applyGravity(dt); }
-    if (this.vx !== 0) { this.applyFriction(dt); }
-    this.applyRebound();
+    if (this.grounded) {
+      if (this.vx !== 0) {
+        this.applyFriction(dt);
+        this.grounded = this.findLanding(dt).landed;
+        this.applyRebound();
+      }
+    }
+    else {
+      this.applyGravity(dt);
+      if (this.vx !== 0) {
+        this.px += this.vx * dt;
+        this.applyRebound();
+      }
+    }
   }
 
   update(dt: number): void {
