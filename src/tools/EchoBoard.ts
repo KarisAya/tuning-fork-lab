@@ -11,6 +11,7 @@ type BoardDirection = 'v' | 'h';
 const DEFAULT_LEN = 12;
 
 export class EchoBoard extends Tool {
+  static type = "EchoBoard";
   static label = '隔音板';
   static icon = '<i class="fa-regular fa-square"></i>';
   static size: readonly [number, number] = [1, 12];

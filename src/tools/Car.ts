@@ -13,6 +13,7 @@ const FRICTION = 0.25 * GRAVITY;
 
 type RawV = [number, number, number]
 export class Car extends ThrowableBell {
+  static type = "Car";
   static label = '小车';
   static icon = '<i class="fa-solid fa-car-side"></i>';
   static size: readonly [number, number] = [3, 2];

@@ -7,15 +7,11 @@ const DEFAULT_WIDTH = 6;
 const DEFAULT_HEIGHT = 1;
 
 export class SmallTable extends Tool {
-
+  static type = "SmallTable";
   static label = '小桌板';
-
   static icon = '<i class="fa-solid fa-xmarks-lines"></i>';
-
   static size: readonly [number, number] = [DEFAULT_WIDTH, DEFAULT_HEIGHT];
-
   static isPlatform = true;
-
   static shape = `
     <svg viewBox="0 0 144 24" xmlns="http://www.w3.org/2000/svg">
       <defs>

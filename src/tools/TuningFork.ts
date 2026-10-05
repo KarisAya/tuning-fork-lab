@@ -8,6 +8,7 @@ const RES_RANGE = GRID * 8;
 const RES_DETUNE = 0.035;
 
 export class TuningFork extends Bell {
+  static type = "TuningFork";
   static label = '音叉';
   static icon = '<i class="fa-solid fa-music"></i>';
   static size: readonly [number, number] = [3, 5];

@@ -16,6 +16,7 @@ interface LandingResult {
 }
 
 export abstract class Tool {
+  static type: string;
   static size: readonly [number, number];
   static shape: string;
   static label: string;
@@ -45,7 +46,6 @@ export abstract class Tool {
     this.render();
   }
 
-  type: string;
   gw: number;
   gh: number;
   x: number;
@@ -67,7 +67,6 @@ export abstract class Tool {
 
   constructor(gx: number, gy: number) {
     const C = this.constructor as typeof Tool;
-    this.type = C.name;
     this.gw = C.size[0];
     this.gh = C.size[1];
     this.x = Math.round(gx);
@@ -220,13 +219,7 @@ export abstract class Tool {
     this.el.style.transform = `translate(${this.px}px, ${state.deskH - this.py - this.h}px)`;
   }
 
-  serialize(): SerializedItem {
-    return {
-      type: this.type,
-      x: Math.round(this.px / GRID),
-      y: Math.round(this.py / GRID),
-    };
-  }
+
 
   keepInsideDesk(): void {
     const maxX = Math.max(0, state.deskW - this.w);
@@ -237,6 +230,13 @@ export abstract class Tool {
     this.y = Math.round(this.py / GRID);
   }
 
+  serialize(): SerializedItem {
+    return {
+      type: (this.constructor as typeof Tool).type,
+      x: Math.round(this.px / GRID),
+      y: Math.round(this.py / GRID),
+    };
+  }
   deserialize(data: SerializedItem): void {
     this.x = Math.round(typeof data.x === 'number' ? data.x : 0);
     this.y = Math.round(typeof data.y === 'number' ? data.y : 0);

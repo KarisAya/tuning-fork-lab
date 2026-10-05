@@ -37,5 +37,5 @@ export function removeItem(item: Tool): void {
 
 export function registerTool(Cls: ToolClass): void {
   TOOL_REGISTRY.push(Cls);
-  TOOL_BY_NAME[Cls.name] = Cls;
+  TOOL_BY_NAME[Cls.type] = Cls;
 }

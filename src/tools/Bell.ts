@@ -1,6 +1,7 @@
 import { SoundEmitter } from './SoundEmitter';
 
 export class Bell extends SoundEmitter {
+  static type = "Bell";
   static label = '铃铛';
   static icon = '<i class="fa-regular fa-bell"></i>';
   static size: readonly [number, number] = [1, 1];

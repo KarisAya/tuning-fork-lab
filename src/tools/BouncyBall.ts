@@ -46,6 +46,7 @@ const MIN_BOUNCE_SPEED = 30;
 
 
 export class BouncyBall extends ThrowableBell {
+  static type = "BouncyBall";
   static label = '篮球';
   static icon = '<i class="fa-solid fa-basketball"></i>';
   static size: readonly [number, number] = [2, 2];
