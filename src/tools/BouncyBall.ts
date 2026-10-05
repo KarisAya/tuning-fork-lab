@@ -78,24 +78,17 @@ export class BouncyBall extends ThrowableBell {
   bounceFactor = DEFAULT_BOUNCE_FACTOR;
   frictionFactor = DEFAULT_FRICTION_FACTOR;
 
-  protected applyGravity(dt: number): void {
-    this.vy -= GRAVITY * dt;
-    const landing = this.findLanding(dt);
-    if (landing.landed) {
-      this.py = landing.landingY;
-      const impactVelocity = this.vy;
-      const bounceVelocity = -impactVelocity * this.bounceFactor;
-      if (Math.abs(bounceVelocity) < MIN_BOUNCE_SPEED) {
-        this.vy = 0;
-        this.grounded = true;
-        return
-      } else {
-        if (this.mode === 'click') { this.emitOnce(); }
-        this.vy = bounceVelocity;
-      }
+  protected onLand(landY: number): void {
+    const impactVelocity = this.vy;
+    const bounceVelocity = -impactVelocity * this.bounceFactor;
+    if (Math.abs(bounceVelocity) < MIN_BOUNCE_SPEED) {
+      this.vy = 0;
+      this.grounded = true;
+      this.py = landY;
+      return
     } else {
-      this.py += this.vy * dt;
-      this.grounded = false;
+      if (this.mode === 'click') { this.emitOnce(); }
+      this.vy = bounceVelocity;
     }
   }
 
