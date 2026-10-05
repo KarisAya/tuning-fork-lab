@@ -7,14 +7,14 @@ import {
   WAVE_COUNT_THROTTLE_STRICT,
   MAX_TRAVEL_DISTANCE,
 } from '../core/constants';
-import { freqHue } from '../core/frequency';
-import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
 import type { Point, Occluder, Wave, DiffractionInfo } from '../core/types';
-import { state } from '../state';
+import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
+import { state } from '../core/state';
+import { freqHue } from './frequency';
 import { collectOccluders } from './occluders';
 import { getIncidentSource, getWavePathToPoint } from './optics';
 /** 2D 圆柱波近似：1/sqrt(r)。 */
-export function waveAlphaAt(radius: number): number {
+function waveAlphaAt(radius: number): number {
   if (radius < 1) { return 0; }
   return 1 / Math.sqrt(radius / GRID)
 }

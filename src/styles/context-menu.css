@@ -1,0 +1,164 @@
+#menu {
+  position: fixed;
+  z-index: 100;
+
+  display: none;
+
+  min-width: 248px;
+  max-width: min(320px, calc(100vw - 16px));
+
+  padding: 10px;
+
+  border: 1px solid #2e3f6b;
+  border-radius: 12px;
+
+  background: #131c33;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+#menu.open {
+  display: block;
+}
+
+.menu-title {
+  margin: 2px 0 6px;
+  color: #7f96c9;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.menu-body {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-row > * {
+  min-width: 0;
+}
+
+.menu-row-cells .menu-btn,
+.menu-row-cells .menu-value {
+  flex: 1 1 0;
+  padding: 0 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.menu-label {
+  flex: 0 0 auto;
+  color: #a7b8d8;
+  font-size: 11px;
+}
+
+.menu-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 32px;
+  padding: 0 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: #0e1730;
+  color: #cfe0ff;
+
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.menu-btn,
+.menu-danger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: #cfe0ff;
+  cursor: pointer;
+
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.menu-btn {
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.menu-btn.fill {
+  flex: 1 1 0;
+}
+
+.menu-btn.on {
+  background: #2a64c8;
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.menu-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+
+  padding: 0 8px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+
+  background: #0e1730;
+  color: #eaf2ff;
+}
+
+.menu-input:focus {
+  border-color: var(--accent);
+}
+
+.menu-range {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.menu-note {
+  color: #7f96c9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.menu-danger {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .menu-btn:hover {
+    background: #1e2c52;
+    border-color: var(--border-strong);
+  }
+
+  .menu-danger:hover {
+    background: #4a1f2a;
+    border-color: #a04a5a;
+  }
+}
+
+.menu-btn:active,
+.menu-danger:active {
+  transform: translateY(1px);
+}

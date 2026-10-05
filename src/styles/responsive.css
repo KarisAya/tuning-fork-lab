@@ -1,0 +1,70 @@
+@media (max-width: 600px) {
+  #toolbar {
+    height: 70px;
+  }
+
+  .tool-btn {
+    flex-basis: 64px;
+    width: 64px;
+    height: 56px;
+  }
+
+  .tool-btn .ico {
+    font-size: 18px;
+  }
+
+  #quick-actions {
+    top: 8px;
+    right: 8px;
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  #settings-panel {
+    top: 56px;
+    right: 8px;
+    width: min(320px, calc(100vw - 16px));
+  }
+}
+
+@media (max-width: 380px) {
+  #toolbar {
+    height: 66px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .toolbar-tools {
+    gap: 6px;
+  }
+
+  .tool-btn {
+    flex-basis: 60px;
+    width: 60px;
+    height: 54px;
+    font-size: 10px;
+  }
+
+  .tool-btn .ico {
+    font-size: 17px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-btn,
+  .icon-btn,
+  .settings-btn,
+  #settings-panel,
+  .settings-close {
+    transition: none;
+  }
+}

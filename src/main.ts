@@ -1,6 +1,6 @@
 // 入口：只在启动时装配一次，其余逻辑都在各自模块里。
 
-import './style.css';
+import './style/index.css';
 
 import { boot } from './app';
 import { GRID } from './core/constants';

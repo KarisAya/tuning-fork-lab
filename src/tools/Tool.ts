@@ -242,3 +242,53 @@ export abstract class Tool {
     this.el.remove();
   }
 }
+
+export class FixedQueue<T> {
+  private items: T[];
+  private readonly capacity: number;
+
+  /**
+   * 构造函数
+   * @param capacity 队列的最大容量
+   * @param initialItems 可选的初始数据
+   */
+  constructor(capacity: number, initialItems: T[] = []) {
+    if (capacity <= 0) {
+      throw new Error("队列容量必须大于 0");
+    }
+    this.capacity = capacity;
+    // 如果初始数据超过容量，截取前 capacity 个
+    this.items = initialItems.slice(0, capacity);
+  }
+
+  /**
+   * 获取当前队列长度
+   */
+  get length(): number { return this.items.length; }
+  /**
+   * 向队列末尾添加元素
+   * 如果队列已满，则移除最前面的元素（先进先出原则）以腾出空间
+   * @param item 要添加的元素
+   * @returns 当前队列实例，支持链式调用
+   */
+  append(item: T): this {
+    while (this.items.length >= this.capacity) { this.items.shift(); }
+    this.items.push(item);
+    return this;
+  }
+
+  /**
+   * 通过索引获取元素
+   * 支持负数索引：-1 代表最后一个元素，-2 代表倒数第二个，以此类推
+   * @param index 索引值
+   * @returns 元素或 undefined（如果索引越界）
+   */
+  at(index: number) {
+    if (index < 0) { return this.items[this.items.length + index]; }
+    return this.items[index];
+  }
+
+  toArray() {
+    return [...this.items];
+  }
+}

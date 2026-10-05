@@ -2,7 +2,7 @@
 
 import { DEFAULT_SAMPLES, GRID } from './core/constants';
 import type { SerializedItem } from './core/types';
-import { state } from './state';
+import { state } from './core/state';
 import { addItem, removeItem } from './tools/manager';
 import { toolClassFor } from './tools/registry';
 import { closeMenu } from './ui/menu-controller';
@@ -27,9 +27,7 @@ export const INITIAL_CONFIG = {
 
 /** 清空桌面：工具、波、以及可能指向已删工具的菜单。 */
 export function clearDesk(): void {
-  while (state.items.length) {
-    removeItem(state.items[state.items.length - 1]);
-  }
+  while (state.items.length) { removeItem(state.items[state.items.length - 1]); }
   state.waves = [];
   closeMenu();
 }

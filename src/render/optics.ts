@@ -2,9 +2,9 @@
 // 只依赖遮挡体快照，不依赖任何具体工具类。
 
 import { DIFF_DECAY, DIFF_EDGE_POWER, GRID, TAU, HALF_PI, SHADOW_SOFTNESS } from '../core/constants';
+import type { Point, Occluder, Wave } from '../core/types';
 import { clamp, smoothstep, distanceSquarePointSegment, rayHitSegment, reflectPointAcrossLine } from '../core/math';
-import type { Occluder, Point, Wave } from '../core/types';
-import { state } from '../state';
+import { state } from '../core/state';
 
 /** 起点到终点之间是否被任何板子挡住（ignore 中的板忽略）。 */
 export function segmentBlockedByBoards(start: Point, end: Point, ignore: Set<string>,): boolean {

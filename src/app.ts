@@ -22,9 +22,9 @@ import {
   settingsBtn,
   closeSettingsBtn,
   settingsPanel,
+  setupBtn,
 } from './ui/dom';
 import { closeMenu, isMenuOpen } from './ui/menu-controller';
-import { toggleSettings, closeSettings } from './ui/settings';
 import { setSampleDensity } from './ui/sample-density';
 
 function layout(): void {
@@ -42,14 +42,7 @@ function layout(): void {
   for (const item of state.items) { item.keepInsideDesk(); }
 }
 
-function updatePauseButton(): void {
-  const icon = pauseBtn.querySelector("i");
-  if (!icon) return;
-  icon.className = state.paused ? "fa-solid fa-play" : "fa-solid fa-pause";
-  pauseBtn.setAttribute("aria-label", state.paused ? "继续" : "暂停");
-  pauseBtn.setAttribute("title", state.paused ? "继续" : "暂停");
-  pauseBtn.classList.toggle("on", state.paused);
-}
+
 
 function togglePause(): void {
   state.paused = !state.paused;
@@ -63,15 +56,11 @@ export function boot(): void {
   sampleRange.max = String(SAMPLE_MAX);
   sampleRange.step = String(SAMPLE_STEP);
   layout();
-  settingsBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    toggleSettings();
-  });
-  closeSettingsBtn.addEventListener("click", closeSettings);
+  setupBtn();
   pauseBtn.addEventListener('click', togglePause);
   resetBtn.addEventListener('click', clearDesk);
   exportBtn.addEventListener('click', exportConfig);
-  importBtn.addEventListener('click', fileIn.click);
+  importBtn.addEventListener('click', () => fileIn.click());
   sampleRange.addEventListener('input', () => { setSampleDensity(Number(sampleRange.value)); });
   fileIn.addEventListener('change', () => {
     const file = fileIn.files?.[0];

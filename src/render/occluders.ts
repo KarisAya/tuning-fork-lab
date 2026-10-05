@@ -3,7 +3,7 @@
 import { GRID } from '../core/constants';
 import type { Point, Segment, UniSeg } from '../core/types';
 import { distanceSquarePointSegment } from '../core/math';
-import { state } from '../state';
+import { state } from '../core/state';
 
 export const HALF_GRID_SQ = GRID * GRID / 4;
 export function isPointOnSegment(p: Point, seg: Segment) {

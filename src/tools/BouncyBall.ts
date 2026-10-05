@@ -1,7 +1,7 @@
 import { GRAVITY, MAX_THROW_SPEED } from '../core/constants';
 import type { SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
-import { FixedQueue } from '../state';
+import { FixedQueue } from './Tool';
 import { Bell, appendToneControls } from './Bell';
 import { createContextMenu, rangeControl, rowLabel } from '../ui/menu';
 

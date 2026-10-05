@@ -2,7 +2,8 @@
 import { GRAVITY, RESTITUTION } from '../core/constants';
 import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
-import { state, FixedQueue } from '../state';
+import { state } from '../state';
+import { FixedQueue } from './Tool';
 import { setFreq, appendToneControls } from './Bell';
 import { ThrowableBell } from "./BouncyBall"
 import { button, createContextMenu, rowLabel } from '../ui/menu';

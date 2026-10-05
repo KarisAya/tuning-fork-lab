@@ -1,16 +1,9 @@
 // 波的绘制：直接波用软边可见度，二级波用几何路径采样。
 import { RENDER_SAMPLES, SECONDARY_RENDER_SAMPLES, TAU, WAVE_LW, MIN_WAVE_EFFECTIVE_ALPHA } from '../core/constants';
 import type { Point, Wave } from '../core/types';
-import {
-  diffractionPositionFactor,
-  diffractionAngleFactor,
-  buildOccluderCache,
-  directVisibility,
-  getWavePathToPoint,
-  segmentBlockedByBoards,
-} from '../sim/optics';
-import { renderWaveAlpha } from '../sim/waves';
-import { state } from '../state';
+import { state } from '../core/state';
+import { diffractionPositionFactor, diffractionAngleFactor, buildOccluderCache, directVisibility, getWavePathToPoint, segmentBlockedByBoards, } from './optics';
+import { renderWaveAlpha } from './wave';
 import { waveCtx } from '../ui/dom';
 
 // ---------------------------------------------------------------------------

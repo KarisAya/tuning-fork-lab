@@ -1,7 +1,7 @@
 // 频率相关的换算：频率 ↔ 色相、发射间隔、档位。
 
-import { EMIT_FAST, EMIT_SLOW, FREQ_MAX, FREQ_MIN } from './constants';
-import { clamp } from './math';
+import { EMIT_FAST, EMIT_SLOW, FREQ_MAX, FREQ_MIN } from '../core/constants';
+import { clamp } from '../core/math';
 
 /** 频率在对数刻度上的归一化位置（0 = 最低档，1 = 最高档）。 */
 export function freqNorm(freq: number): number {
