@@ -1,4 +1,5 @@
 // 全局常量：数值只在这里定义，其他模块只读。
+export const CONFIG_VERSION = 10;
 
 export const GRID = 24;
 export const GRAVITY = 2400;

@@ -4,28 +4,18 @@ import { GRID, WAVE_SPEED, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, DEFAULT_SAMPLES, SAMP
 import { state } from './state';
 import { renderWaves } from './render/waves';
 import { updateWaves } from './sim/waves';
-import { spawnTool } from './tools/manager';
 import { TOOL_REGISTRY } from './tools/registry';
 import {
   canvas,
   toolsEl,
   waveCtx,
   deskEl,
-  exportBtn,
-  fileIn,
-  importBtn,
   menuEl,
-  pauseBtn,
-  resetBtn,
   sampleRange,
-  sampleVal,
   settingsBtn,
-  closeSettingsBtn,
   settingsPanel,
-  setupBtn,
 } from './ui/dom';
-import { closeMenu, isMenuOpen } from './ui/menu-controller';
-import { setSampleDensity } from './ui/sample-density';
+import { closeSettings, closeMenu, togglePause, setupBtn, isMenuOpen, appendToolItem } from './ui/';
 
 function layout(): void {
   const rect = deskEl.getBoundingClientRect();
@@ -44,10 +34,7 @@ function layout(): void {
 
 
 
-function togglePause(): void {
-  state.paused = !state.paused;
-  updatePauseButton();
-}
+
 export function boot(): void {
   state.waveSpeed = WAVE_SPEED;
   state.samples = DEFAULT_SAMPLES;
@@ -57,22 +44,6 @@ export function boot(): void {
   sampleRange.step = String(SAMPLE_STEP);
   layout();
   setupBtn();
-  pauseBtn.addEventListener('click', togglePause);
-  resetBtn.addEventListener('click', clearDesk);
-  exportBtn.addEventListener('click', exportConfig);
-  importBtn.addEventListener('click', () => fileIn.click());
-  sampleRange.addEventListener('input', () => { setSampleDensity(Number(sampleRange.value)); });
-  fileIn.addEventListener('change', () => {
-    const file = fileIn.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try { loadConfig(JSON.parse(String(reader.result))); }
-      catch (error) { console.warn('配置解析失败', error); }
-    };
-    reader.readAsText(file);
-    fileIn.value = '';
-  });
   window.addEventListener('keydown', (event) => {
     const target = event.target as HTMLElement | null;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
@@ -81,7 +52,6 @@ export function boot(): void {
       togglePause();
     }
   });
-  // document.addEventListener('pointerdown', (event) => { if (isMenuOpen() && !menuEl.contains(event.target as Node)) { closeMenu(); } });
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -97,17 +67,8 @@ export function boot(): void {
   });
   resizeObserver.observe(deskEl);
   toolsEl.innerHTML = '';
-  for (const C of TOOL_REGISTRY) {
-    const button = document.createElement('button');
-    button.className = 'tool-btn';
-    button.type = 'button';
-    button.innerHTML = `<span class="ico">${C.icon}</span><span>${C.label}</span>`;
-    button.title = `添加${C.label}`;
-    button.addEventListener('click', () => { spawnTool(C); });
-    toolsEl.appendChild(button);
-  }
+  for (const C of TOOL_REGISTRY) { appendToolItem(C); }
   loadConfig(INITIAL_CONFIG);
-  sampleVal.textContent = String(state.samples);
   let lastTime = performance.now();
   const frame = (now: number) => {
     let dt = (now - lastTime) / 1000;

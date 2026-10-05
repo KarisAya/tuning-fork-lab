@@ -2,7 +2,6 @@
 // 这里不认识任何具体工具，只提供 DOM 拼装。
 import type { Tool } from '../tools/Tool';
 import { removeItem } from '../tools/manager';
-import { closeMenu } from './menu-controller';
 
 export function createContextMenu(item: Tool, title: string) {
   const menu = document.createElement('div');

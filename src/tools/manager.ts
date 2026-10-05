@@ -1,9 +1,11 @@
 // 桌面上的工具增删。只操作 state.items，不碰 DOM 以外的逻辑。
 import type { Tool } from './Tool';
-import type { ToolClass } from './registry';
 import { GRID } from '../core/constants';
-import { state } from '../state';
+import { state } from '../core/state';
 
+export type ToolClass = typeof Tool;
+export const TOOL_REGISTRY: ToolClass[] = [];
+export const TOOL_BY_NAME: Record<string, ToolClass> = {};
 
 /** 在随机位置新增一个工具，落点由工具类的 spawnY 决定。 */
 
@@ -31,4 +33,9 @@ export function removeItem(item: Tool): void {
   }
   item.remove();
   state.occStale = true;
+}
+
+export function registerTool(Cls: ToolClass): void {
+  TOOL_REGISTRY.push(Cls);
+  TOOL_BY_NAME[Cls.name] = Cls;
 }
