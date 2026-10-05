@@ -17,3 +17,11 @@ export const importBtn = $('btn-import') as HTMLButtonElement;
 export const fileIn = $('file-input') as HTMLInputElement;
 export const sampleRange = $('sample-range') as HTMLInputElement;
 export const sampleVal = $('sample-val');
+export const settingsBtn =
+  $("btn-settings") as HTMLButtonElement;
+
+export const closeSettingsBtn =
+  $("btn-close-settings") as HTMLButtonElement;
+
+export const settingsPanel =
+  $("settings-panel");

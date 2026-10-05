@@ -8,7 +8,6 @@ import { spawnTool } from './tools/manager';
 import { TOOL_REGISTRY } from './tools/registry';
 import {
   canvas,
-  toolbar,
   toolsEl,
   waveCtx,
   deskEl,
@@ -20,30 +19,98 @@ import {
   resetBtn,
   sampleRange,
   sampleVal,
+  settingsBtn,
+  closeSettingsBtn,
+  settingsPanel,
 } from './ui/dom';
 import { closeMenu, isMenuOpen } from './ui/menu-controller';
+import { toggleSettings, closeSettings } from './ui/settings';
 import { setSampleDensity } from './ui/sample-density';
 
 function layout(): void {
-  state.deskW = Math.floor(window.innerWidth);
-  state.deskH = Math.max(GRID, Math.floor((window.innerHeight - toolbar.offsetHeight) / GRID) * GRID);
-  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
-  // 桌面布局：视口尺寸 → 网格桌面 → 画布分辨率与波速。
-  deskEl.style.width = `${state.deskW}px`;
-  deskEl.style.height = `${state.deskH}px`;
-  deskEl.style.backgroundSize = `${GRID}px ${GRID}px, ${GRID}px ${GRID}px`;
-  canvas.width = Math.max(1, Math.floor(state.deskW * state.dpr));
-  canvas.height = Math.max(1, Math.floor(state.deskH * state.dpr));
-  canvas.style.width = `${state.deskW}px`;
-  canvas.style.height = `${state.deskH}px`;
-  waveCtx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-  for (const item of state.items) item.keepInsideDesk();
+  const rect = deskEl.getBoundingClientRect();
+
+  state.deskW = Math.max(1, Math.floor(rect.width));
+  state.deskH = Math.max(1, Math.floor(rect.height));
+
+  state.dpr = Math.min(
+    window.devicePixelRatio || 1,
+    2
+  );
+
+  deskEl.style.backgroundSize =
+    `${GRID}px ${GRID}px, ${GRID}px ${GRID}px`;
+
+  const pixelWidth =
+    Math.max(
+      1,
+      Math.floor(state.deskW * state.dpr)
+    );
+
+  const pixelHeight =
+    Math.max(
+      1,
+      Math.floor(state.deskH * state.dpr)
+    );
+
+  if (
+    canvas.width !== pixelWidth ||
+    canvas.height !== pixelHeight
+  ) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+  }
+
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+
+  waveCtx.setTransform(
+    state.dpr,
+    0,
+    0,
+    state.dpr,
+    0,
+    0
+  );
+
+  for (const item of state.items) {
+    item.keepInsideDesk();
+  }
 }
 
-export function togglePause(): void {
+function updatePauseButton(): void {
+  const icon =
+    pauseBtn.querySelector("i");
+
+  if (!icon) return;
+
+  icon.className = state.paused
+    ? "fa-solid fa-play"
+    : "fa-solid fa-pause";
+
+  pauseBtn.setAttribute(
+    "aria-label",
+    state.paused
+      ? "继续"
+      : "暂停"
+  );
+
+  pauseBtn.setAttribute(
+    "title",
+    state.paused
+      ? "继续"
+      : "暂停"
+  );
+
+  pauseBtn.classList.toggle(
+    "on",
+    state.paused
+  );
+}
+
+function togglePause(): void {
   state.paused = !state.paused;
-  pauseBtn.textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
-  pauseBtn.classList.toggle('on', state.paused);
+  updatePauseButton();
 }
 export function boot(): void {
   state.waveSpeed = WAVE_SPEED;
@@ -53,6 +120,9 @@ export function boot(): void {
   sampleRange.max = String(SAMPLE_MAX);
   sampleRange.step = String(SAMPLE_STEP);
   layout();
+  settingsBtn.addEventListener("click", (event) => { event.stopPropagation(); toggleSettings(); });
+
+  closeSettingsBtn.addEventListener("click", closeSettings);
   pauseBtn.addEventListener('click', () => {
     togglePause();
   });
@@ -83,8 +153,19 @@ export function boot(): void {
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
     if (event.code === 'Space') { event.preventDefault(); togglePause(); }
   });
-  document.addEventListener('pointerdown', (event) => { if (isMenuOpen() && !menuEl.contains(event.target as Node)) { closeMenu(); } });
+  // document.addEventListener('pointerdown', (event) => { if (isMenuOpen() && !menuEl.contains(event.target as Node)) { closeMenu(); } });
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Node;
+      if (isMenuOpen() && !menuEl.contains(target)) { closeMenu(); }
+      if (settingsPanel.classList.contains("open") && !settingsPanel.contains(target) && !settingsBtn.contains(target)) { closeSettings(); }
+    }
+  );
+
   deskEl.addEventListener('contextmenu', (event) => event.preventDefault());
+  const resizeObserver = new ResizeObserver(() => { layout(); for (const item of state.items) { item.render(); } });
+  resizeObserver.observe(deskEl);
   window.addEventListener('resize', () => { layout(); for (const item of state.items) { item.render(); } });
   toolsEl.innerHTML = '';
   for (const C of TOOL_REGISTRY) {

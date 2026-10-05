@@ -5,34 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0f1f" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css" />
-    <title>音叉模拟器 · Wave Lab</title>
+    <title>声波实验室 · Wave Lab</title>
   </head>
   <body>
     <main id="app">
-      <section id="desk" aria-label="声波实验桌">
-        <canvas id="waves"></canvas>
-      </section>
-      <section id="toolbar" aria-label="工具栏">
-        <div id="tools" class="toolbar-group"></div>
-        <div class="separator" aria-hidden="true"></div>
-        <button class="control-btn" id="btn-pause" type="button"><i class="fa-solid fa-pause"></i> 暂停</button>
-        <button class="control-btn" id="btn-reset" type="button"><i class="fa-solid fa-rotate-left"></i> 重置桌面</button>
-        <button class="control-btn" id="btn-export" type="button"><i class="fa-solid fa-file-export"></i> 导出配置</button>
-        <button class="control-btn" id="btn-import" type="button"><i class="fa-solid fa-file-import"></i> 加载配置</button>
-        <input id="file-input" type="file" accept=".json,application/json" hidden />
-        <div class="separator" aria-hidden="true"></div>
-        <label class="sample-control">
-          <span>波前采样</span>
-          <input id="sample-range" type="range" min="64" max="2048" step="64" value="512" />
-          <strong id="sample-val">512</strong>
-        </label>
-        <div class="toolbar-spacer"></div>
-        <div class="hint">
-          空格暂停 / 继续 · 左键拖动 · 右键打开工具设置<br />
-          <a href="https://qm.qq.com/q/AnTDkyTrii" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-at"></i> KarisAya </a>
-          <span id="about"><i class="fa-solid fa-copyright"></i> 2026 IF 互动小说</span>
+      <section id="desk" aria-label="实验桌"><canvas id="waves"></canvas></section>
+      <section id="toolbar" aria-label="工具栏"><div id="tools" class="toolbar-tools"></div></section>
+      <div id="quick-actions" aria-label="快捷操作">
+        <button class="icon-btn" id="btn-pause" type="button" aria-label="暂停" title="暂停"><i class="fa-solid fa-pause"></i></button>
+        <button class="icon-btn" id="btn-reset" type="button" aria-label="重置桌面" title="重置桌面">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+        <button class="icon-btn" id="btn-settings" type="button" aria-label="设置" title="设置" aria-expanded="false">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+      <div id="settings-panel" aria-hidden="true">
+        <div class="settings-header">
+          <span>实验设置</span>
+          <button id="btn-close-settings" class="settings-close" type="button" aria-label="关闭设置">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
-      </section>
+        <div class="settings-body">
+          <label class="sample-control">
+            <span>波前采样</span>
+            <div class="sample-row">
+              <input id="sample-range" type="range" min="64" max="2048" step="64" value="512" /> <strong id="sample-val">512</strong>
+            </div>
+          </label>
+          <div class="settings-actions">
+            <button class="settings-btn" id="btn-export" type="button">
+              <i class="fa-solid fa-file-export"></i> <span>导出配置</span>
+            </button>
+            <button class="settings-btn" id="btn-import" type="button">
+              <i class="fa-solid fa-file-import"></i> <span>导入配置</span>
+            </button>
+          </div>
+          <div class="settings-divider"></div>
+          <div class="hint">
+            空格暂停 / 继续<br />
+            左键拖动 · 右键打开工具设置
+          </div>
+          <a class="author-link" href="https://qm.qq.com/q/AnTDkyTrii" target="_blank" rel="noopener noreferrer">
+            <i class="fa-solid fa-at"></i> KarisAya
+          </a>
+          <span class="about"> <i class="fa-solid fa-copyright"></i> 2026 IF 声波实验室 </span>
+        </div>
+      </div>
+      <input id="file-input" type="file" accept=".json,application/json" hidden />
     </main>
     <div id="menu" role="menu" aria-hidden="true"></div>
     <script type="module" src="./src/main.ts"></script>
