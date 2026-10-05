@@ -1,12 +1,11 @@
 // 隔音板 / 回音板：波遮挡体，可切方向、调长度、开关反射。
 
 import { GRID } from '../core/constants';
-import { clamp } from '../core/math';
 import type { Segment, UniSeg, SerializedItem } from '../core/types';
-import { state } from '../state';
+import { clamp } from '../core/math';
+import { state } from '../core/state';
 import { Tool } from './Tool';
-import { button, createContextMenu, rangeControl, rowLabel } from '../ui/menu';
-import { refreshMenu } from '../ui/menu-controller';
+import { rowLabel, button, rangeControl, createContextMenu, refreshMenu } from '../ui/menu';
 
 type BoardDirection = 'v' | 'h';
 const DEFAULT_LEN = 12;

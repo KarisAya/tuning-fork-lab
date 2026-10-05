@@ -1,11 +1,11 @@
 // 铃铛：点击 / 持续发声，不参与共振。
-
+import { DEFAULT_LEVEL, DEFAULT_FREQ, FREQ_MAX, FREQ_MIN, TOP_LEVEL, FREQ_TABLE } from '../core/constants';
 import type { Point, SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
 import { waveInterval } from '../render/visuals';
 import { emitWaveAt } from '../render/wave';
 import { Tool } from './Tool';
-import { button, rowLabel, refreshMenu, createContextMenu } from '../ui/menu';
+import { rowLabel, button, createContextMenu, refreshMenu } from '../ui/menu';
 
 
 type WaveMode = 'click' | 'continuous';

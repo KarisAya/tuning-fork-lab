@@ -1,7 +1,7 @@
-import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
+import { clamp } from '../core/math';
 import { Tool } from './Tool';
-import { createContextMenu, rangeControl, rowLabel } from '../ui/menu';
+import { rowLabel, rangeControl, createContextMenu } from '../ui/menu';
 
 const DEFAULT_WIDTH = 6;
 const DEFAULT_HEIGHT = 1;

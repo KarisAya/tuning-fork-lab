@@ -1,14 +1,12 @@
 // tools/Car.ts
 import { GRAVITY, RESTITUTION } from '../core/constants';
-import { clamp } from '../core/math';
 import type { SerializedItem } from '../core/types';
-import { state } from '../state';
+import { clamp } from '../core/math';
+import { state } from '../core/state';
 import { FixedQueue } from './Tool';
-import { setFreq, appendToneControls } from './Bell';
+import { setFreq, appendToneControls } from './SoundEmitter';
 import { ThrowableBell } from "./BouncyBall"
-import { button, createContextMenu, rowLabel } from '../ui/menu';
-import { placeMenu, refreshMenu } from '../ui/menu-controller';
-
+import { rowLabel, button, createContextMenu, refreshMenu } from '../ui/menu';
 // 小车
 const CAR_SPEED_MAX = 2;
 const FRICTION = 0.25 * GRAVITY;
@@ -131,7 +129,7 @@ export class Car extends ThrowableBell {
     speedRow.appendChild(button('− 0.2', () => {
       item.speed = clamp(Math.round((item.speed - 0.2) * 10) / 10, 0.2, CAR_SPEED_MAX);
       speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
-      placeMenu();
+      refreshMenu(item);
     }));
     const speedOut = document.createElement('strong');
     speedOut.className = 'menu-value';
@@ -140,7 +138,7 @@ export class Car extends ThrowableBell {
     speedRow.appendChild(button('+ 0.2', () => {
       item.speed = clamp(Math.round((item.speed + 0.2) * 10) / 10, 0.2, CAR_SPEED_MAX);
       speedOut.textContent = `${item.speed.toFixed(1)} 马赫`;
-      placeMenu();
+      refreshMenu(item);
     }));
     body.appendChild(speedRow);
     appendToneControls(body, item);

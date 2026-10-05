@@ -2,8 +2,9 @@ import { GRAVITY, MAX_THROW_SPEED } from '../core/constants';
 import type { SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
 import { FixedQueue } from './Tool';
-import { Bell, appendToneControls } from './Bell';
-import { createContextMenu, rangeControl, rowLabel } from '../ui/menu';
+import { Bell } from './Bell';
+import { appendToneControls } from './SoundEmitter';
+import { rangeControl, rowLabel, createContextMenu } from '../ui/menu';
 
 type MouseSample = [number, number, number]
 export abstract class ThrowableBell extends Bell {

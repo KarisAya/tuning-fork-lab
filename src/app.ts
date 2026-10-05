@@ -40,6 +40,8 @@ function layout(): void {
 
 export function boot(): void {
   state.paused = false;
+  state.waveSpeed = WAVE_SPEED;
+  state.samples = DEFAULT_SAMPLES;
   sampleRange.min = String(SAMPLE_MIN);
   sampleRange.max = String(SAMPLE_MAX);
   sampleRange.step = String(SAMPLE_STEP);

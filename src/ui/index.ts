@@ -107,6 +107,7 @@ export const setupBtn = () => {
     closeSettingsBtn.onclick = closeSettings;
     pauseBtn.onclick = togglePause;
     resetBtn.onclick = resetDesk;
+    settingsPanel.hidden = false;
     sampleRange.oninput = () => setSampleDensity(Number(sampleRange.value));
     exportBtn.onclick = exportConfig;
     fileIn.addEventListener('change', () => {
@@ -124,7 +125,6 @@ export const setupBtn = () => {
 }
 
 export function appendToolItem(C: ToolClass): void {
-    toolsEl.innerHTML = '';
     const button = document.createElement('button');
     button.className = 'tool-btn';
     button.type = 'button';

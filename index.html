@@ -12,7 +12,7 @@
       <section id="desk" aria-label="实验桌"><canvas id="waves"></canvas></section>
       <section id="toolbar" aria-label="工具栏"><div id="tools" class="toolbar-tools"></div></section>
       <div id="quick-actions" aria-label="快捷操作">
-        <button class="icon-btn" id="btn-pause" type="button" aria-label="暂停" title="暂停"><i class="fa-solid fa-pause"></i></button>
+        <button class="icon-btn on" id="btn-pause" type="button" aria-label="暂停" title="暂停"><i class="fa-solid fa-pause"></i></button>
         <button class="icon-btn" id="btn-reset" type="button" aria-label="重置桌面" title="重置桌面">
           <i class="fa-solid fa-rotate-left"></i>
         </button>
@@ -20,7 +20,7 @@
           <i class="fa-solid fa-gear"></i>
         </button>
       </div>
-      <div id="settings-panel" aria-hidden="true">
+      <div id="settings-panel" aria-hidden="true" aria-expanded="false" hidden>
         <div class="settings-header">
           <span>实验设置</span>
           <button id="btn-close-settings" class="settings-close" type="button" aria-label="关闭设置">
