@@ -192,9 +192,9 @@ export abstract class Tool {
     if (this.grounded) {
       if (this.vx !== 0) {
         this.applyFriction(dt);
-        this.grounded = this.findLanding(dt).landed;
         this.applyRebound();
       }
+      this.grounded = this.findLanding(dt).landed;
     }
     else {
       this.applyGravity(dt);
