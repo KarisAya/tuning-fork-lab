@@ -1,7 +1,7 @@
 // 全局可变状态：桌面尺寸、模拟开关、桌面上的工具与波。
 // 其他模块通过这个对象读写，避免各文件各自维护同名全局变量。
 
-import type { Point, Occluder, Wave } from './types';
+import type { Occluder, Wave } from './types';
 import type { Tool } from '../tools/Tool';
 
 

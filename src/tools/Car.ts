@@ -1,5 +1,5 @@
 // tools/Car.ts
-import { GRAVITY, RESTITUTION } from '../core/constants';
+import { GRAVITY } from '../core/constants';
 import type { SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
 import { state } from '../core/state';
