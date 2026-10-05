@@ -1,7 +1,7 @@
 // 波的可见性 / 路径几何：直接波遮挡、反射展开路径、衍射包络。
 // 只依赖遮挡体快照，不依赖任何具体工具类。
 
-import { DIFF_DECAY, DIFF_EDGE_POWER, GRID, TAU, HALF_PI, SHADOW_SOFTNESS } from '../core/constants';
+import { GRID, TAU, HALF_PI, DIFF_DECAY, DIFF_EDGE_POWER, SHADOW_SOFTNESS } from '../core/constants';
 import type { Point, Occluder, Wave } from '../core/types';
 import { clamp, smoothstep, distanceSquarePointSegment, rayHitSegment, reflectPointAcrossLine } from '../core/math';
 import { state } from '../core/state';

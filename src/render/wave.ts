@@ -1,27 +1,10 @@
 // 波形本身：创建、发射、二级波（反射 / 衍射）、生命周期推进。
-
-import {
-  GRID,
-  WAVE_FADE_DURATION,
-  WAVE_COUNT_THROTTLE_START,
-  WAVE_COUNT_THROTTLE_STRICT,
-  MAX_TRAVEL_DISTANCE,
-} from '../core/constants';
 import type { Point, Occluder, Wave, DiffractionInfo } from '../core/types';
 import { circleSegmentIntersections, reflectPointAcrossLine } from '../core/math';
 import { state } from '../core/state';
-import { freqHue } from './frequency';
-import { collectOccluders } from './occluders';
+import { freqHue } from './visuals';
 import { getIncidentSource, getWavePathToPoint } from './optics';
-/** 2D 圆柱波近似：1/sqrt(r)。 */
-function waveAlphaAt(radius: number): number {
-  if (radius < 1) { return 0; }
-  return 1 / Math.sqrt(radius / GRID)
-}
-export function renderWaveAlpha(wave: Wave): number {
-  const alpha = waveAlphaAt(wave.r) * wave.fadeOut;
-  return wave.skipTag ? alpha * 0.5 : alpha;
-}
+
 
 export function makeWave(position: Point, freq: number): Wave {
   return {
@@ -67,10 +50,6 @@ export function makeSubWave(position: Point,
 
 
 export function pushWave(wave: Wave): void {
-  state.waves.push(wave);
-}
-function pushSkipWave(wave: Wave): void {
-  wave.skipTag = true;
   state.waves.push(wave);
 }
 export function emitWaveAt(source: Point, freq: number): void {
@@ -161,7 +140,7 @@ function createDiffractionWave(parent: Wave, o: Occluder, edgeIndex: number, inc
   return next;
 }
 
-function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
+export function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
   // if (wave.reflections.length > MAX_REFLECTION_DEPTH) return;
   // if (wave.diffractionDepth > MAX_DIFFRACTION_DEPTH) return;
   // -------------------------
@@ -214,29 +193,4 @@ function spawnSecondaryWaves(wave: Wave, push = pushWave): void {
       push(child);
     }
   }
-}
-
-export function updateWaves(dt: number): void {
-  if (!state.waves.length) return;
-  if (state.occStale) { collectOccluders(); }
-  for (let i = state.waves.length - 1; i >= 0; i -= 1) {
-    const wave = state.waves[i];
-    wave.r += state.waveSpeed * dt;
-    if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
-      wave.fadeOut -= dt / WAVE_FADE_DURATION;
-      if (wave.fadeOut < 0) { state.waves.splice(i, 1); }
-      continue;
-    }
-    if (wave.skipTag) continue;
-    const waveCount = state.waves.length
-    if (waveCount > WAVE_COUNT_THROTTLE_STRICT) {
-      if (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_STRICT)) { continue; }
-      else { spawnSecondaryWaves(wave, pushSkipWave); }
-    }
-    else if (waveCount > WAVE_COUNT_THROTTLE_START &&
-      (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_START))
-    ) { spawnSecondaryWaves(wave, pushSkipWave); }
-    else { spawnSecondaryWaves(wave); }
-  }
-  return;
 }

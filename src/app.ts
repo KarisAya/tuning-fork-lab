@@ -1,22 +1,28 @@
 // 事件绑定与主循环。应用的入口逻辑在 main.ts 调用 boot() 时启动。
-import { INITIAL_CONFIG, exportConfig, loadConfig, clearDesk } from './config';
-import { GRID, WAVE_SPEED, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, DEFAULT_SAMPLES, SAMPLE_STEP } from './core/constants';
-import { state } from './state';
-import { renderWaves } from './render/waves';
-import { updateWaves } from './sim/waves';
-import { TOOL_REGISTRY } from './tools/registry';
-import {
-  canvas,
-  toolsEl,
-  waveCtx,
-  deskEl,
-  menuEl,
-  sampleRange,
-  settingsBtn,
-  settingsPanel,
-} from './ui/dom';
-import { closeSettings, closeMenu, togglePause, setupBtn, isMenuOpen, appendToolItem } from './ui/';
+import { CONFIG_VERSION, GRID, WAVE_SPEED, MAX_DT, SAMPLE_MAX, SAMPLE_MIN, DEFAULT_SAMPLES, SAMPLE_STEP } from './core/constants';
+import type { Config } from './core/types';
+import { state } from './core/state';
+import { renderWaves, updateWaves } from './render/';
+import { TOOL_REGISTRY } from './tools/manager';
+import { canvas, waveCtx, deskEl, toolsEl, menuEl, settingsBtn, settingsPanel, sampleRange } from './ui/dom';
+import { closeSettings, togglePause, loadConfig, setupBtn, isMenuOpen, appendToolItem } from './ui/';
+import { closeMenu } from './ui/menu';
 
+const INITIAL_CONFIG: Config = {
+  version: CONFIG_VERSION,
+  samples: DEFAULT_SAMPLES,
+  waveSpeed: WAVE_SPEED,
+  items: [
+    { "type": "BouncyBall", "x": 5, "y": 7, "freq": 55, "mode": "click", "bounceFactor": 0.8, "frictionFactor": 0.8 },
+    { "type": "SmallTable", "x": 11, "y": 0, "gw": 1, "gh": 6 },
+    { "type": "SmallTable", "x": 0, "y": 6, "gw": 12, "gh": 1 },
+    { "type": "SmallTable", "x": 0, "y": 0, "gw": 1, "gh": 6 },
+    { "type": "EchoBoard", "x": 12, "y": 2, "dir": "v", "len": 5, "reflect": true },
+    { "type": "EchoBoard", "x": 12, "y": 8, "dir": "v", "len": 5, "reflect": true },
+    { "type": "TuningFork", "x": 0, "y": 7, "freq": 440, "mode": "click" },
+    { "type": "Car", "x": 9, "y": 7, "freq": 440, "mode": "click", "speed": 1 },
+  ]
+}
 function layout(): void {
   const rect = deskEl.getBoundingClientRect();
   state.deskW = Math.max(1, Math.floor(rect.width));
@@ -32,12 +38,7 @@ function layout(): void {
   for (const item of state.items) { item.keepInsideDesk(); }
 }
 
-
-
-
 export function boot(): void {
-  state.waveSpeed = WAVE_SPEED;
-  state.samples = DEFAULT_SAMPLES;
   state.paused = false;
   sampleRange.min = String(SAMPLE_MIN);
   sampleRange.max = String(SAMPLE_MAX);

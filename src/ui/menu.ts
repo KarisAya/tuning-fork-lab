@@ -1,7 +1,32 @@
 // 右键菜单的通用零件：标题、按钮、行、滑杆、删除项。
 // 这里不认识任何具体工具，只提供 DOM 拼装。
+import type { Point } from '../core/types';
+import { state } from '../core/state';
 import type { Tool } from '../tools/Tool';
 import { removeItem } from '../tools/manager';
+import { menuEl } from './dom';
+
+export function openMenu(at: Point, item: Tool): void {
+  state.openItem.item = item;
+  state.openItem.at = at;
+  menuEl.innerHTML = '';
+  menuEl.appendChild((item.constructor as typeof Tool).contextMenu(item));
+  menuEl.classList.add('open');
+  menuEl.setAttribute('aria-hidden', 'false');
+  const rect = menuEl.getBoundingClientRect();
+  let [x, y] = at;
+  if (x + rect.width > window.innerWidth - 8) { x = window.innerWidth - rect.width - 8; }
+  if (y + rect.height > window.innerHeight - 8) { y = window.innerHeight - rect.height - 8; }
+  menuEl.style.left = `${Math.max(8, x)}px`;
+  menuEl.style.top = `${Math.max(8, y)}px`;
+}
+
+export function closeMenu(): void {
+  menuEl.classList.remove('open');
+  menuEl.setAttribute('aria-hidden', 'true');
+  menuEl.innerHTML = '';
+  state.openItem.item = null;
+}
 
 export function createContextMenu(item: Tool, title: string) {
   const menu = document.createElement('div');

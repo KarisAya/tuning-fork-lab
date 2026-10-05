@@ -1,9 +1,22 @@
 // 波的绘制：直接波用软边可见度，二级波用几何路径采样。
-import { RENDER_SAMPLES, SECONDARY_RENDER_SAMPLES, TAU, WAVE_LW, MIN_WAVE_EFFECTIVE_ALPHA } from '../core/constants';
+import {
+  RENDER_SAMPLES, SECONDARY_RENDER_SAMPLES, TAU, WAVE_LW,
+  MIN_WAVE_EFFECTIVE_ALPHA, MAX_TRAVEL_DISTANCE, WAVE_FADE_DURATION,
+  WAVE_COUNT_THROTTLE_START, WAVE_COUNT_THROTTLE_STRICT,
+} from '../core/constants';
 import type { Point, Wave } from '../core/types';
 import { state } from '../core/state';
-import { diffractionPositionFactor, diffractionAngleFactor, buildOccluderCache, directVisibility, getWavePathToPoint, segmentBlockedByBoards, } from './optics';
-import { renderWaveAlpha } from './wave';
+import { collectOccluders } from './occluders';
+import {
+  diffractionPositionFactor,
+  diffractionAngleFactor,
+  buildOccluderCache,
+  directVisibility,
+  getWavePathToPoint,
+  segmentBlockedByBoards
+} from './optics';
+import { pushWave, spawnSecondaryWaves } from './wave';
+import { waveAlphaAt } from './visuals';
 import { waveCtx } from '../ui/dom';
 
 // ---------------------------------------------------------------------------
@@ -418,6 +431,12 @@ function drawDiffractionWave(wave: Wave, baseAlpha: number): void {
 // 入口
 // ---------------------------------------------------------------------------
 
+
+function WaveAlpha(wave: Wave): number {
+  const alpha = waveAlphaAt(wave.r) * wave.fadeOut;
+  return wave.skipTag ? alpha * 0.5 : alpha;
+}
+
 export function renderWaves(): void {
   waveCtx.clearRect(0, 0, state.deskW, state.deskH);
   waveCtx.lineWidth = WAVE_LW;
@@ -433,7 +452,7 @@ export function renderWaves(): void {
   const diffractionWaves: Array<[Wave, number]> = [];
 
   for (const wave of state.waves) {
-    const alpha = renderWaveAlpha(wave);
+    const alpha = WaveAlpha(wave);
     if (!circleRingIntersectsViewport(wave.position, wave.r, w, h)) continue;
     if (wave.reflections.length > 0) { reflectedWaves.push([wave, alpha]); }
     else if (wave.diffractionInfo) { diffractionWaves.push([wave, alpha]); }
@@ -459,3 +478,31 @@ export function renderWaves(): void {
   }
 }
 
+const pushSkipWave = (wave: Wave) => {
+  wave.skipTag = true;
+  pushWave(wave);
+}
+export function updateWaves(dt: number): void {
+  if (!state.waves.length) return;
+  if (state.occStale) { collectOccluders(); }
+  for (let i = state.waves.length - 1; i >= 0; i -= 1) {
+    const wave = state.waves[i];
+    wave.r += state.waveSpeed * dt;
+    if (wave.travelDistance + wave.r > MAX_TRAVEL_DISTANCE) {
+      wave.fadeOut -= dt / WAVE_FADE_DURATION;
+      if (wave.fadeOut < 0) { state.waves.splice(i, 1); }
+      continue;
+    }
+    if (wave.skipTag) continue;
+    const waveCount = state.waves.length
+    if (waveCount > WAVE_COUNT_THROTTLE_STRICT) {
+      if (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_STRICT)) { continue; }
+      else { spawnSecondaryWaves(wave, pushSkipWave); }
+    }
+    else if (waveCount > WAVE_COUNT_THROTTLE_START &&
+      (i % Math.ceil(waveCount / WAVE_COUNT_THROTTLE_START))
+    ) { spawnSecondaryWaves(wave, pushSkipWave); }
+    else { spawnSecondaryWaves(wave); }
+  }
+  return;
+}

@@ -6,17 +6,17 @@ export const deskEl = $('desk');
 export const canvas = $<HTMLCanvasElement>('waves');
 export const waveCtx = canvas.getContext('2d') as CanvasRenderingContext2D;
 if (!waveCtx) throw new Error('Canvas 2D context unavailable');
+
 export const toolbar = $('toolbar');
-export const menuEl = $('menu');
 export const toolsEl = $('tools');
+export const menuEl = $('menu');
 
-
-
-export const settingsBtn = $<HTMLButtonElement>("btn-settings");
-export const closeSettingsBtn = $<HTMLButtonElement>("btn-close-settings");
-export const settingsPanel = $("settings-panel");
 export const pauseBtn = $<HTMLButtonElement>('btn-pause');
 export const resetBtn = $<HTMLButtonElement>('btn-reset');
+export const settingsBtn = $<HTMLButtonElement>("btn-settings");
+
+export const settingsPanel = $("settings-panel");
+export const closeSettingsBtn = $<HTMLButtonElement>("btn-close-settings");
 export const sampleRange = $<HTMLInputElement>('sample-range');
 export const sampleVal = $('sample-val');
 export const exportBtn = $<HTMLButtonElement>('btn-export');

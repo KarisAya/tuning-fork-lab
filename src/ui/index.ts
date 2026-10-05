@@ -1,26 +1,16 @@
-import { CONFIG_VERSION, GRID, DEFAULT_SAMPLES, SAMPLE_MIN, SAMPLE_MAX, SAMPLE_STEP } from '../core/constants';
-import type { Point, SerializedItem } from '../core/types';
+import { CONFIG_VERSION, GRID, SAMPLE_MIN, SAMPLE_MAX, SAMPLE_STEP } from '../core/constants';
+import type { SerializedItem } from '../core/types';
 import { clamp } from '../core/math';
 import { state } from '../core/state';
-import type { Tool } from '../tools/Tool';
 import { type ToolClass, TOOL_BY_NAME, addItem, spawnTool } from '../tools/manager';
 import {
-    canvas,
-    toolsEl,
-    waveCtx,
-    deskEl,
-    exportBtn,
-    fileIn,
-    importBtn,
-    menuEl,
-    pauseBtn,
-    resetBtn,
-    sampleRange,
-    sampleVal,
-    settingsBtn,
-    closeSettingsBtn,
-    settingsPanel,
+    toolsEl, menuEl,
+    pauseBtn, resetBtn, settingsBtn,
+    settingsPanel, closeSettingsBtn,
+    sampleRange, sampleVal,
+    exportBtn, fileIn, importBtn,
 } from './dom';
+import { openMenu, closeMenu } from './menu';
 
 export function openSettings(): void {
     settingsPanel.classList.add("open");
@@ -60,27 +50,7 @@ export function resetDesk(): void {
     closeMenu();
 }
 
-export function openMenu(at: Point, item: Tool): void {
-    state.openItem.item = item;
-    state.openItem.at = at;
-    menuEl.innerHTML = '';
-    menuEl.appendChild((item.constructor as typeof Tool).contextMenu(item));
-    menuEl.classList.add('open');
-    menuEl.setAttribute('aria-hidden', 'false');
-    const rect = menuEl.getBoundingClientRect();
-    let [x, y] = at;
-    if (x + rect.width > window.innerWidth - 8) { x = window.innerWidth - rect.width - 8; }
-    if (y + rect.height > window.innerHeight - 8) { y = window.innerHeight - rect.height - 8; }
-    menuEl.style.left = `${Math.max(8, x)}px`;
-    menuEl.style.top = `${Math.max(8, y)}px`;
-}
 
-export function closeMenu(): void {
-    menuEl.classList.remove('open');
-    menuEl.setAttribute('aria-hidden', 'true');
-    menuEl.innerHTML = '';
-    state.openItem.item = null;
-}
 
 export function refreshMenu(item: unknown): void {
     const openItem = state.openItem.item;
@@ -124,6 +94,7 @@ export function loadConfig(cfg: unknown): void {
     if (!cfg || typeof cfg !== 'object') { return; }
     const data = cfg as { samples?: unknown; items?: unknown };
     if (!Array.isArray(data.items)) { return; }
+    if (typeof data.samples === 'number') { setSampleDensity(data.samples); }
     if (typeof data.samples === 'number') { setSampleDensity(data.samples); }
     for (const raw of data.items) {
         if (!raw || typeof raw !== 'object') { continue; }
@@ -171,3 +142,4 @@ export function appendToolItem(C: ToolClass): void {
     button.addEventListener('click', () => { spawnTool(C); });
     toolsEl.appendChild(button);
 }
+

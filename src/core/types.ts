@@ -3,7 +3,12 @@
 export type Point = readonly [number, number];
 export type Segment = readonly [Point, Point];
 
-
+export interface Config {
+  version: number;
+  samples: number;
+  waveSpeed: number;
+  items: SerializedItem[];
+}
 export interface SerializedItem {
   type: string;
   x: number;

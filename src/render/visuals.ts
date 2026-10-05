@@ -1,6 +1,6 @@
-// 频率相关的换算：频率 ↔ 色相、发射间隔、档位。
+// 渲染的换算：频率 ↔ 色相、发射间隔、Alpha。
 
-import { EMIT_FAST, EMIT_SLOW, FREQ_MAX, FREQ_MIN } from '../core/constants';
+import { GRID, EMIT_FAST, EMIT_SLOW, FREQ_MAX, FREQ_MIN } from '../core/constants';
 import { clamp } from '../core/math';
 
 /** 频率在对数刻度上的归一化位置（0 = 最低档，1 = 最高档）。 */
@@ -16,4 +16,10 @@ export function freqHue(freq: number): number {
 /** 频率 → 发射间隔（秒）。 */
 export function waveInterval(freq: number): number {
     return EMIT_SLOW * Math.pow(EMIT_FAST / EMIT_SLOW, freqNorm(freq));
+}
+
+/** 2D 圆柱波近似：1/sqrt(r)。 */
+export function waveAlphaAt(radius: number): number {
+    if (radius < 1) { return 0; }
+    return 1 / Math.sqrt(radius / GRID)
 }
